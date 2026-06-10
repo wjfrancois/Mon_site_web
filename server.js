@@ -10,12 +10,12 @@ const { router: authRouter, requireAuth } = require('./routes/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const VIEWS = path.join(__dirname, 'views');
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
 
-// Session
+// ⚠️  Session AVANT tout le reste (middleware statique inclus)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fenix_barbier_fallback_secret',
   resave: false,
@@ -27,13 +27,33 @@ app.use(session({
   }
 }));
 
-// Auth routes (publiques)
+// Bloquer toute tentative d'accès direct aux fichiers admin par URL
+app.use((req, res, next) => {
+  const blocked = ['/admin.html', '/admin.htm'];
+  if (blocked.includes(req.path.toLowerCase())) {
+    return res.redirect(301, '/admin');
+  }
+  next();
+});
+
+// Fichiers statiques publics (CSS, JS client, images)
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Auth routes (login/logout — publiques)
 app.use('/', authRouter);
 
 // Routes API publiques (réservation client)
 app.use('/api/appointments', require('./routes/appointments'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/barbers', require('./routes/barbers'));
+
+// Route settings publique (lecture seule pour le site client)
+app.get('/api/public/settings', (req, res) => {
+  const rows = db.prepare('SELECT key, value FROM site_settings').all();
+  const settings = {};
+  rows.forEach(r => { settings[r.key] = r.value; });
+  res.json(settings);
+});
 
 // Routes API protégées (admin seulement)
 app.use('/api/clients', requireAuth, require('./routes/clients'));
@@ -42,18 +62,11 @@ app.use('/api/stats', requireAuth, require('./routes/stats'));
 app.use('/api/reminders', requireAuth, require('./routes/reminders'));
 app.use('/api/settings', requireAuth, require('./routes/settings'));
 
-// Route settings publique (lecture seule pour le site client)
-app.get('/api/public/settings', (req, res) => {
-  const db = require('./database');
-  const rows = db.prepare('SELECT key, value FROM site_settings').all();
-  const settings = {};
-  rows.forEach(r => { settings[r.key] = r.value; });
-  res.json(settings);
-});
-
-// Pages admin protégées
-app.get('/admin', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+// Pages protégées — servies depuis views/ (hors dossier public)
+app.get('/admin', requireAuth, (req, res) => res.sendFile(path.join(VIEWS, 'admin.html')));
+app.get('/login', (req, res) => {
+  if (req.session?.authenticated) return res.redirect('/admin');
+  res.sendFile(path.join(VIEWS, 'login.html'));
 });
 
 // Cron: envoi des rappels dus toutes les 5 minutes
@@ -86,9 +99,7 @@ cron.schedule('*/5 * * * *', async () => {
         });
         await sendEmail(r.email, `Rappel – ${process.env.SHOP_NAME || 'Fenix Barbier'}`, html);
       }
-
-      const sentAt = now;
-      db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('sent', sentAt, r.id);
+      db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('sent', now, r.id);
       if (r.appointment_id) db.prepare('UPDATE appointments SET reminder_sent = 1 WHERE id = ?').run(r.appointment_id);
     } catch (err) {
       console.error(`[Rappel #${r.id}] Erreur:`, err.message);
@@ -96,7 +107,7 @@ cron.schedule('*/5 * * * *', async () => {
   }
 });
 
-// Page client
+// Page client (accès public)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/{*path}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 

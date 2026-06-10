@@ -14,11 +14,8 @@ async function getAdminHash() {
 }
 getAdminHash();
 
-// GET /login
-router.get('/login', (req, res) => {
-  if (req.session?.authenticated) return res.redirect('/admin');
-  res.sendFile(require('path').join(__dirname, '..', 'public', 'login.html'));
-});
+// GET /login — maintenant géré dans server.js (serve depuis views/)
+// router.get('/login', ...) retiré pour éviter le doublon
 
 // POST /login
 router.post('/login', async (req, res) => {
