@@ -40,6 +40,16 @@ app.use('/api/clients', requireAuth, require('./routes/clients'));
 app.use('/api/accounting', requireAuth, require('./routes/accounting'));
 app.use('/api/stats', requireAuth, require('./routes/stats'));
 app.use('/api/reminders', requireAuth, require('./routes/reminders'));
+app.use('/api/settings', requireAuth, require('./routes/settings'));
+
+// Route settings publique (lecture seule pour le site client)
+app.get('/api/public/settings', (req, res) => {
+  const db = require('./database');
+  const rows = db.prepare('SELECT key, value FROM site_settings').all();
+  const settings = {};
+  rows.forEach(r => { settings[r.key] = r.value; });
+  res.json(settings);
+});
 
 // Pages admin protégées
 app.get('/admin', requireAuth, (req, res) => {

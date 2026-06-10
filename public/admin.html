@@ -324,6 +324,65 @@
 
     <!-- SETTINGS -->
     <div id="page-settings" class="page-section hidden">
+
+      <!-- Image hero -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-image"></i> Image d'en-tête du site</h3>
+        </div>
+        <div class="hero-upload-zone" id="heroUploadZone">
+          <div class="hero-preview-wrap">
+            <div class="hero-preview" id="heroPreview">
+              <div class="hero-preview-placeholder" id="heroPlaceholder">
+                <i class="fas fa-image"></i>
+                <p>Aucune image — fond dégradé par défaut</p>
+              </div>
+              <img id="heroPreviewImg" src="" alt="Aperçu" style="display:none">
+              <div class="hero-preview-overlay" id="heroPreviewOverlay" style="display:none">
+                <button class="btn btn-danger btn-sm" onclick="removeHeroImage()">
+                  <i class="fas fa-trash"></i> Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="hero-upload-controls">
+            <p class="upload-hint">Choisissez une photo de fond pour la section d'accueil du site client.<br>
+               Formats acceptés : JPG, PNG, WebP — Maximum 5 Mo.</p>
+            <label class="btn btn-primary upload-label" for="heroImageInput">
+              <i class="fas fa-upload"></i> Choisir une image
+            </label>
+            <input type="file" id="heroImageInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadHeroImage(this)">
+            <div id="uploadProgress" style="display:none" class="upload-progress">
+              <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
+              <span>Téléversement en cours...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Textes de la section hero -->
+        <div class="hero-texts-form">
+          <div class="card-header" style="border-top:1px solid var(--border)">
+            <h3><i class="fas fa-pen"></i> Textes de la section d'accueil</h3>
+            <button class="btn btn-sm btn-primary" onclick="saveHeroTexts()"><i class="fas fa-save"></i> Sauvegarder</button>
+          </div>
+          <div style="padding:1.25rem;display:grid;gap:1rem">
+            <div class="form-group" style="margin:0">
+              <label>Étiquette (ex: Salon de coiffure pour hommes)</label>
+              <input type="text" id="settingHeroTag" class="form-input" placeholder="Salon de coiffure pour hommes">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Titre principal</label>
+              <input type="text" id="settingHeroTitle" class="form-input" placeholder="L'art de la coupe parfaite">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Sous-titre</label>
+              <input type="text" id="settingHeroSubtitle" class="form-input" placeholder="Prenez rendez-vous en ligne, 24h/24">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Barbiers & Services -->
       <div class="settings-grid">
         <div class="card">
           <div class="card-header"><h3>Barbiers</h3>

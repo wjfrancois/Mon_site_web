@@ -20,6 +20,22 @@ router.put('/:id', (req, res) => {
   res.json({ message: 'Barbier mis à jour' });
 });
 
+router.delete('/:id', (req, res) => {
+  const future = db.prepare(`
+    SELECT COUNT(*) as c FROM appointments
+    WHERE barber_id = ? AND date >= date('now') AND status NOT IN ('cancelled','completed')
+  `).get(req.params.id);
+
+  if (future.c > 0) {
+    return res.status(409).json({
+      error: `Ce barbier a ${future.c} rendez-vous à venir. Annulez-les d'abord avant de le supprimer.`
+    });
+  }
+
+  db.prepare('UPDATE barbers SET active = 0 WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Barbier désactivé' });
+});
+
 router.get('/:id/hours', (req, res) => {
   const hours = db.prepare('SELECT * FROM working_hours WHERE barber_id = ? ORDER BY day_of_week ASC').all(req.params.id);
   res.json(hours);

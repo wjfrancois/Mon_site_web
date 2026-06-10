@@ -64,6 +64,12 @@ db.exec(`
     FOREIGN KEY (appointment_id) REFERENCES appointments(id)
   );
 
+  CREATE TABLE IF NOT EXISTS site_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS reminders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id INTEGER NOT NULL,
@@ -119,6 +125,16 @@ if (barberCount.c === 0) {
       }
     }
   }
+}
+
+// Seed default site settings
+const settingsCount = db.prepare('SELECT COUNT(*) as c FROM site_settings').get();
+if (settingsCount.c === 0) {
+  const insertSetting = db.prepare('INSERT INTO site_settings (key, value) VALUES (?, ?)');
+  insertSetting.run('hero_image', '');
+  insertSetting.run('hero_title', "L'art de la coupe parfaite");
+  insertSetting.run('hero_subtitle', 'Prenez rendez-vous en ligne, 24h/24 — Résultats garantis');
+  insertSetting.run('hero_tag', 'Salon de coiffure pour hommes');
 }
 
 module.exports = db;

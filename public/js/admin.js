@@ -535,10 +535,31 @@ async function generateReport() {
 
 // ---- SETTINGS ----
 async function loadSettings() {
-  const [barbers, services] = await Promise.all([
+  const [barbers, services, siteSettings] = await Promise.all([
     fetch(`${API}/api/barbers`).then(r => r.json()),
-    fetch(`${API}/api/services`).then(r => r.json())
+    fetch(`${API}/api/services`).then(r => r.json()),
+    fetch(`${API}/api/settings`).then(r => r.json())
   ]);
+
+  // Hero image preview
+  const img = document.getElementById('heroPreviewImg');
+  const placeholder = document.getElementById('heroPlaceholder');
+  const overlay = document.getElementById('heroPreviewOverlay');
+  if (siteSettings.hero_image) {
+    img.src = siteSettings.hero_image;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    overlay.style.display = 'flex';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'block';
+    overlay.style.display = 'none';
+  }
+
+  // Hero texts
+  document.getElementById('settingHeroTag').value = siteSettings.hero_tag || '';
+  document.getElementById('settingHeroTitle').value = siteSettings.hero_title || '';
+  document.getElementById('settingHeroSubtitle').value = siteSettings.hero_subtitle || '';
 
   document.getElementById('barbersList').innerHTML = barbers.map(b => `
     <div class="settings-item">
@@ -548,6 +569,7 @@ async function loadSettings() {
       </div>
       <div class="action-btns">
         <button class="btn-table btn-edit" onclick="openBarberModal(${b.id})">Modifier</button>
+        <button class="btn-table btn-delete" onclick="deleteBarber(${b.id}, '${b.name.replace(/'/g, "\\'")}')">✗</button>
       </div>
     </div>
   `).join('');
@@ -571,6 +593,18 @@ async function deleteService(id) {
   await fetch(`${API}/api/services/${id}`, { method: 'DELETE' });
   showToast('Service désactivé', 'success');
   loadSettings();
+}
+
+async function deleteBarber(id, name) {
+  if (!confirm(`Supprimer le barbier "${name}" ?\n\nNote: impossible s'il a des rendez-vous à venir non annulés.`)) return;
+  const res = await fetch(`${API}/api/barbers/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (res.ok) {
+    showToast(`Barbier "${name}" désactivé`, 'success');
+    loadSettings();
+  } else {
+    showToast(data.error, 'error');
+  }
 }
 
 // ---- MODALS ----
@@ -782,4 +816,55 @@ function statusBadge(status) {
 async function logout() {
   await fetch('/logout', { method: 'POST' });
   window.location.href = '/login';
+}
+
+// ---- HERO IMAGE ----
+async function uploadHeroImage(input) {
+  if (!input.files[0]) return;
+  const progress = document.getElementById('uploadProgress');
+  progress.style.display = 'flex';
+
+  const formData = new FormData();
+  formData.append('image', input.files[0]);
+
+  try {
+    const res = await fetch(`${API}/api/settings/upload/hero`, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Image mise à jour avec succès', 'success');
+      loadSettings();
+    } else {
+      showToast(data.error || 'Erreur lors du téléversement', 'error');
+    }
+  } catch (e) {
+    showToast('Erreur de connexion', 'error');
+  } finally {
+    progress.style.display = 'none';
+    input.value = '';
+  }
+}
+
+async function removeHeroImage() {
+  if (!confirm('Supprimer l\'image et revenir au fond par défaut ?')) return;
+  const res = await fetch(`${API}/api/settings/upload/hero`, { method: 'DELETE' });
+  if (res.ok) {
+    showToast('Image supprimée — fond par défaut restauré', 'success');
+    loadSettings();
+  }
+}
+
+async function saveHeroTexts() {
+  const updates = [
+    { key: 'hero_tag', value: document.getElementById('settingHeroTag').value },
+    { key: 'hero_title', value: document.getElementById('settingHeroTitle').value },
+    { key: 'hero_subtitle', value: document.getElementById('settingHeroSubtitle').value },
+  ];
+  await Promise.all(updates.map(u =>
+    fetch(`${API}/api/settings/${u.key}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: u.value })
+    })
+  ));
+  showToast('Textes mis à jour', 'success');
 }

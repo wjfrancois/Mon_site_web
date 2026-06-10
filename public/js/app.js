@@ -17,6 +17,7 @@ const state = {
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
+  loadSiteSettings();
   loadServices();
   loadBarbers();
   initCalendar();
@@ -24,6 +25,28 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('hamburger').addEventListener('click', toggleMenu);
   document.getElementById('dateDisplay') && (document.getElementById('dateDisplay').textContent = formatDate(new Date()));
 });
+
+async function loadSiteSettings() {
+  try {
+    const settings = await fetch(`${API}/api/public/settings`).then(r => r.json());
+    const bg = document.getElementById('heroBg');
+    if (settings.hero_image && bg) {
+      bg.style.backgroundImage = `url('${settings.hero_image}')`;
+      bg.style.backgroundSize = 'cover';
+      bg.style.backgroundPosition = 'center';
+      bg.classList.add('has-image');
+    }
+    if (settings.hero_tag) document.getElementById('heroTag').textContent = settings.hero_tag;
+    if (settings.hero_title) {
+      const el = document.getElementById('heroTitle');
+      // Preserve the <span> accent on last word
+      const words = settings.hero_title.split(' ');
+      const last = words.pop();
+      el.innerHTML = words.join(' ') + (words.length ? '<br>' : '') + `<span>${last}</span>`;
+    }
+    if (settings.hero_subtitle) document.getElementById('heroSub').textContent = settings.hero_subtitle;
+  } catch (e) { /* silently fail, defaults remain */ }
+}
 
 function toggleMenu() {
   document.getElementById('mobileMenu').classList.toggle('open');
