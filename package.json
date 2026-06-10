@@ -1,0 +1,25 @@
+{
+  "name": "barberpro",
+  "version": "1.0.0",
+  "description": "Application de gestion pour salon de coiffure homme",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:35687/git/wjfrancois/Mon_site_web"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "node-cron": "^4.2.1",
+    "uuid": "^14.0.0"
+  }
+}

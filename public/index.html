@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>BarberPro – Prise de rendez-vous</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="client-body">
+
+<!-- HEADER -->
+<header class="client-header">
+  <div class="header-inner">
+    <div class="logo">
+      <i class="fas fa-cut"></i>
+      <span>BarberPro</span>
+    </div>
+    <nav class="header-nav">
+      <a href="#booking" class="nav-link active">Réserver</a>
+      <a href="#services-section" class="nav-link">Services</a>
+      <a href="#team" class="nav-link">Notre équipe</a>
+      <a href="/admin" class="nav-link nav-admin"><i class="fas fa-lock"></i> Admin</a>
+    </nav>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#booking">Réserver</a>
+    <a href="#services-section">Services</a>
+    <a href="#team">Notre équipe</a>
+    <a href="/admin">Admin</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <p class="hero-tag">Salon de coiffure pour hommes</p>
+    <h1 class="hero-title">L'art de la<br><span>coupe parfaite</span></h1>
+    <p class="hero-sub">Prenez rendez-vous en ligne, 24h/24 — Résultats garantis</p>
+    <a href="#booking" class="btn btn-primary btn-lg">
+      <i class="fas fa-calendar-plus"></i> Réserver maintenant
+    </a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><strong>500+</strong><span>Clients satisfaits</span></div>
+    <div class="stat"><strong>3</strong><span>Barbiers experts</span></div>
+    <div class="stat"><strong>6+</strong><span>Services offerts</span></div>
+  </div>
+</section>
+
+<!-- SERVICES -->
+<section class="section" id="services-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Nos services</h2>
+      <p>Des soins capillaires de qualité à des prix justes</p>
+    </div>
+    <div class="services-grid" id="servicesGrid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </div>
+</section>
+
+<!-- TEAM -->
+<section class="section section-dark" id="team">
+  <div class="container">
+    <div class="section-header">
+      <h2>Notre équipe</h2>
+      <p>Des professionnels passionnés à votre service</p>
+    </div>
+    <div class="team-grid" id="teamGrid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </div>
+</section>
+
+<!-- BOOKING -->
+<section class="section" id="booking">
+  <div class="container">
+    <div class="section-header">
+      <h2>Prendre un rendez-vous</h2>
+      <p>Quelques étapes simples pour réserver votre place</p>
+    </div>
+
+    <div class="booking-wizard" id="bookingWizard">
+      <!-- Steps indicator -->
+      <div class="steps-indicator">
+        <div class="step active" data-step="1"><span>1</span><p>Service</p></div>
+        <div class="step-line"></div>
+        <div class="step" data-step="2"><span>2</span><p>Barbier</p></div>
+        <div class="step-line"></div>
+        <div class="step" data-step="3"><span>3</span><p>Date & Heure</p></div>
+        <div class="step-line"></div>
+        <div class="step" data-step="4"><span>4</span><p>Vos infos</p></div>
+      </div>
+
+      <!-- Step 1: Service -->
+      <div class="wizard-step" id="step1">
+        <h3>Choisissez votre service</h3>
+        <div class="services-select-grid" id="serviceSelectGrid">
+          <div class="spinner-container"><div class="spinner"></div></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-primary" id="step1Next" disabled onclick="goToStep(2)">Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 2: Barber -->
+      <div class="wizard-step hidden" id="step2">
+        <h3>Choisissez votre barbier</h3>
+        <p class="step-hint">Ou laissez-nous choisir le premier disponible</p>
+        <div class="barbers-grid" id="barberSelectGrid">
+          <div class="spinner-container"><div class="spinner"></div></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-outline" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" id="step2Next" disabled onclick="goToStep(3)">Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 3: Date & Time -->
+      <div class="wizard-step hidden" id="step3">
+        <h3>Choisissez la date et l'heure</h3>
+        <div class="datetime-picker">
+          <div class="calendar-nav">
+            <button class="btn btn-icon" id="prevMonth"><i class="fas fa-chevron-left"></i></button>
+            <h4 id="calendarTitle"></h4>
+            <button class="btn btn-icon" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
+          </div>
+          <div class="calendar-grid" id="calendarGrid"></div>
+          <div class="time-slots-section" id="timeSlotsSection" style="display:none">
+            <h4 id="selectedDateLabel"></h4>
+            <div class="time-slots" id="timeSlots">
+              <div class="spinner-container"><div class="spinner"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-outline" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" id="step3Next" disabled onclick="goToStep(4)">Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+
+      <!-- Step 4: Client Info -->
+      <div class="wizard-step hidden" id="step4">
+        <h3>Vos coordonnées</h3>
+        <div class="booking-summary" id="bookingSummary"></div>
+        <form id="clientForm" class="client-form">
+          <div class="form-group">
+            <label><i class="fas fa-user"></i> Nom complet *</label>
+            <input type="text" id="clientName" placeholder="Ex: Jean Dupont" required>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-phone"></i> Téléphone *</label>
+            <input type="tel" id="clientPhone" placeholder="514-555-0000" required>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-envelope"></i> Courriel (optionnel)</label>
+            <input type="email" id="clientEmail" placeholder="votre@email.com">
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-comment"></i> Notes (optionnel)</label>
+            <textarea id="apptNotes" placeholder="Demandes spéciales, allergies..." rows="3"></textarea>
+          </div>
+          <div class="form-row">
+            <button type="button" class="btn btn-outline" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Retour</button>
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+              <i class="fas fa-check-circle"></i> Confirmer le rendez-vous
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Confirmation -->
+      <div class="wizard-step hidden" id="stepSuccess">
+        <div class="success-screen">
+          <div class="success-icon"><i class="fas fa-check-circle"></i></div>
+          <h3>Rendez-vous confirmé !</h3>
+          <p>Vous recevrez un rappel par SMS 24h avant votre rendez-vous.</p>
+          <div class="booking-confirmation" id="confirmationDetails"></div>
+          <button class="btn btn-primary" onclick="resetBooking()">
+            <i class="fas fa-plus"></i> Nouveau rendez-vous
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="logo"><i class="fas fa-cut"></i> BarberPro</div>
+        <p>L'art de la coupe parfaite depuis 2015.</p>
+      </div>
+      <div>
+        <h4>Horaires</h4>
+        <p>Mar – Ven : 9h – 18h</p>
+        <p>Samedi : 9h – 18h</p>
+        <p>Dimanche : 10h – 17h</p>
+        <p class="closed">Lundi : Fermé</p>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <p><i class="fas fa-phone"></i> 514-555-0100</p>
+        <p><i class="fas fa-envelope"></i> info@barberpro.ca</p>
+        <p><i class="fas fa-map-marker-alt"></i> 123 Rue Saint-Denis, Montréal</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 BarberPro. Tous droits réservés.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
