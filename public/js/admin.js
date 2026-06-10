@@ -524,11 +524,11 @@ async function generateReport() {
     doc.setFillColor(...primaryColor);
     doc.rect(0, 285, 210, 12, 'F');
     doc.setTextColor(226, 176, 74); doc.setFontSize(7);
-    doc.text('BarberPro – Rapport confidentiel', 15, 292);
+    doc.text('Fenix Barbier – Rapport confidentiel', 15, 292);
     doc.text(`Page ${i}/${pageCount}`, 185, 292, { align: 'right' });
   }
 
-  const filename = `barberpro-rapport-${start}-${end}.pdf`;
+  const filename = `fenix-barbier-rapport-${start}-${end}.pdf`;
   doc.save(filename);
   showToast(`Rapport PDF téléchargé: ${filename}`, 'success');
 }
@@ -777,4 +777,9 @@ function statusBadge(status) {
   const map = { pending: ['status-pending', 'En attente'], confirmed: ['status-confirmed', 'Confirmé'], completed: ['status-completed', 'Terminé'], cancelled: ['status-cancelled', 'Annulé'], 'no-show': ['status-no-show', 'No-show'] };
   const [cls, label] = map[status] || ['', status];
   return `<span class="status-badge ${cls}">${label}</span>`;
+}
+
+async function logout() {
+  await fetch('/logout', { method: 'POST' });
+  window.location.href = '/login';
 }

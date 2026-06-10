@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { v4: uuidv4 } = require('uuid');
+const { sendSMS, sendEmail, confirmationEmailHTML, reminderSMSText } = require('../utils/notifications');
 
 // Get all appointments with details
 router.get('/', (req, res) => {
@@ -98,23 +98,32 @@ router.post('/', (req, res) => {
   const service = db.prepare('SELECT * FROM services WHERE id = ?').get(service_id);
   if (!service) return res.status(404).json({ error: 'Service introuvable' });
 
+  const barber = db.prepare('SELECT * FROM barbers WHERE id = ?').get(barber_id);
+
   const appt = db.prepare(`
     INSERT INTO appointments (client_id, barber_id, service_id, date, time, notes)
     VALUES (?, ?, ?, ?, ?, ?)
   `).run(client.id, barber_id, service_id, date, time, notes || null);
 
-  // Auto-create reminder for 24h before
+  // Rappel SMS 24h avant
   const apptDateTime = new Date(`${date}T${time}`);
   apptDateTime.setHours(apptDateTime.getHours() - 24);
   const reminderTime = apptDateTime.toISOString().slice(0, 16).replace('T', ' ');
+  const smsMsg = reminderSMSText({ service: service.name, date, time, barber: barber?.name || '' });
 
-  db.prepare(`
-    INSERT INTO reminders (client_id, appointment_id, message, channel, scheduled_at)
-    VALUES (?, ?, ?, 'sms', ?)
-  `).run(client.id, appt.lastInsertRowid,
-    `Rappel: Votre rendez-vous "${service.name}" est demain à ${time}. Pour annuler: 514-555-0100`,
-    reminderTime
-  );
+  db.prepare(`INSERT INTO reminders (client_id, appointment_id, message, channel, scheduled_at) VALUES (?, ?, ?, 'sms', ?)`)
+    .run(client.id, appt.lastInsertRowid, smsMsg, reminderTime);
+
+  // Confirmation immédiate (SMS + email si dispo)
+  const notifData = { clientName: client_name, service: service.name, barber: barber?.name || '', date, time, price: service.price.toFixed(2) };
+
+  sendSMS(client_phone, `[Fenix Barbier] Réservation confirmée! ${service.name} le ${date} à ${time} avec ${barber?.name || 'notre équipe'}. À bientôt!`)
+    .catch(err => console.error('[SMS confirmation]', err.message));
+
+  if (client_email) {
+    sendEmail(client_email, `Confirmation de rendez-vous – Fenix Barbier`, confirmationEmailHTML(notifData))
+      .catch(err => console.error('[Email confirmation]', err.message));
+  }
 
   res.json({ id: appt.lastInsertRowid, client_id: client.id, message: 'Rendez-vous créé avec succès' });
 });

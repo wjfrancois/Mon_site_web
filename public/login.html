@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fenix Barbier – Connexion Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
+      padding: 1rem;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .logo {
+      text-align: center; margin-bottom: 2rem;
+    }
+    .logo .icon {
+      width: 64px; height: 64px; border-radius: 16px;
+      background: #1a1a2e;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 1.6rem; color: #e2b04a;
+    }
+    .logo h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem; color: #1a1a2e;
+    }
+    .logo p { color: #64748b; font-size: 0.875rem; margin-top: 0.25rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    label {
+      display: block; font-size: 0.875rem; font-weight: 500;
+      color: #1e293b; margin-bottom: 0.5rem;
+    }
+    .input-wrap { position: relative; }
+    .input-wrap i {
+      position: absolute; left: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8; font-size: 0.9rem;
+    }
+    input[type="password"] {
+      width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.9rem; font-family: inherit;
+      background: #fff; color: #1e293b;
+      transition: all 0.2s; outline: none;
+    }
+    input[type="password"]:focus {
+      border-color: #e2b04a;
+      box-shadow: 0 0 0 3px rgba(226,176,74,0.12);
+    }
+    .toggle-pwd {
+      position: absolute; right: 12px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: #94a3b8; font-size: 0.875rem; padding: 4px;
+    }
+    .toggle-pwd:hover { color: #64748b; }
+    .btn-login {
+      width: 100%; padding: 0.85rem;
+      background: #e2b04a; color: #1a1a2e;
+      border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      box-shadow: 0 2px 8px rgba(226,176,74,0.35);
+    }
+    .btn-login:hover { background: #c9962e; transform: translateY(-1px); }
+    .btn-login:active { transform: translateY(0); }
+    .btn-login:disabled { opacity: 0.6; pointer-events: none; }
+    .error-msg {
+      display: none; background: #fef2f2; border: 1px solid #fecaca;
+      color: #dc2626; border-radius: 8px; padding: 0.75rem 1rem;
+      font-size: 0.875rem; margin-bottom: 1rem;
+      align-items: center; gap: 0.5rem;
+    }
+    .error-msg.show { display: flex; }
+    .back-link {
+      display: block; text-align: center; margin-top: 1.25rem;
+      color: #64748b; font-size: 0.8rem; text-decoration: none;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: #e2b04a; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(26,26,46,0.3);
+      border-top-color: #1a1a2e; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <div class="icon"><i class="fas fa-cut"></i></div>
+      <h1>Fenix Barbier</h1>
+      <p>Accès réservé au gérant</p>
+    </div>
+
+    <div class="error-msg" id="errorMsg">
+      <i class="fas fa-exclamation-circle"></i>
+      <span id="errorText">Mot de passe incorrect.</span>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+          <button type="button" class="toggle-pwd" onclick="togglePwd()" tabindex="-1">
+            <i class="fas fa-eye" id="toggleIcon"></i>
+          </button>
+        </div>
+      </div>
+      <button type="submit" class="btn-login" id="loginBtn">
+        <i class="fas fa-sign-in-alt"></i> Se connecter
+      </button>
+    </form>
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Retour au site client</a>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const errEl = document.getElementById('errorMsg');
+      errEl.classList.remove('show');
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner"></div> Connexion...';
+
+      const password = document.getElementById('password').value;
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.href = '/admin';
+        } else {
+          document.getElementById('errorText').textContent = data.error || 'Mot de passe incorrect.';
+          errEl.classList.add('show');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+      } catch {
+        document.getElementById('errorText').textContent = 'Erreur de connexion. Réessayez.';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+      }
+    });
+
+    function togglePwd() {
+      const input = document.getElementById('password');
+      const icon = document.getElementById('toggleIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+  </script>
+</body>
+</html>
