@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fenix Barbier – Tableau de bord</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="admin-body">
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo"><i class="fas fa-cut"></i><span>Fenix Barbier</span></div>
+    <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item active" data-page="dashboard">
+      <i class="fas fa-chart-pie"></i><span>Tableau de bord</span>
+    </a>
+    <a href="#" class="nav-item" data-page="calendar">
+      <i class="fas fa-calendar-alt"></i><span>Agenda</span>
+      <span class="badge" id="pendingBadge">0</span>
+    </a>
+    <a href="#" class="nav-item" data-page="appointments">
+      <i class="fas fa-list-check"></i><span>Rendez-vous</span>
+    </a>
+    <a href="#" class="nav-item" data-page="clients">
+      <i class="fas fa-users"></i><span>Clients</span>
+    </a>
+    <a href="#" class="nav-item" data-page="reminders">
+      <i class="fas fa-bell"></i><span>Relances</span>
+    </a>
+    <a href="#" class="nav-item" data-page="accounting">
+      <i class="fas fa-dollar-sign"></i><span>Comptabilité</span>
+    </a>
+    <a href="#" class="nav-item" data-page="reports">
+      <i class="fas fa-file-chart-column"></i><span>Rapports</span>
+    </a>
+    <a href="#" class="nav-item" data-page="settings">
+      <i class="fas fa-cog"></i><span>Paramètres</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/" class="nav-item"><i class="fas fa-arrow-left"></i><span>Site client</span></a>
+    <a href="#" class="nav-item" onclick="logout()" style="color:#ef4444"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="admin-main" id="adminMain">
+
+  <!-- Top bar -->
+  <header class="admin-topbar">
+    <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+    <h1 class="page-title" id="pageTitle">Tableau de bord</h1>
+    <div class="topbar-right">
+      <span class="date-display" id="dateDisplay"></span>
+      <div class="avatar">G</div>
+    </div>
+  </header>
+
+  <!-- Page content -->
+  <main class="admin-content" id="adminContent">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page-section">
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">RDV aujourd'hui</span>
+            <strong class="kpi-value" id="kpiToday">–</strong>
+          </div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-icon"><i class="fas fa-dollar-sign"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">Revenus ce mois</span>
+            <strong class="kpi-value" id="kpiRevenue">–</strong>
+          </div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-icon"><i class="fas fa-users"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">Total clients</span>
+            <strong class="kpi-value" id="kpiClients">–</strong>
+          </div>
+        </div>
+        <div class="kpi-card kpi-orange">
+          <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">RDV en attente</span>
+            <strong class="kpi-value" id="kpiPending">–</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Revenus mensuels</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Services populaires</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="servicesChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Performance des barbiers</h3>
+          </div>
+          <div id="barberStatsTable"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>RDV d'aujourd'hui</h3>
+            <button class="btn btn-sm btn-primary" onclick="showPage('calendar')">Voir l'agenda</button>
+          </div>
+          <div id="todayList" class="appointment-list-mini"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div id="page-calendar" class="page-section hidden">
+      <div class="page-actions">
+        <input type="date" id="calendarDate" class="form-input">
+        <select id="calendarBarber" class="form-input">
+          <option value="">Tous les barbiers</option>
+        </select>
+        <button class="btn btn-primary" onclick="openApptModal()">
+          <i class="fas fa-plus"></i> Nouveau RDV
+        </button>
+      </div>
+      <div class="calendar-view" id="calendarView"></div>
+    </div>
+
+    <!-- APPOINTMENTS LIST -->
+    <div id="page-appointments" class="page-section hidden">
+      <div class="page-actions">
+        <input type="text" id="apptSearch" class="form-input" placeholder="Rechercher...">
+        <select id="apptStatusFilter" class="form-input">
+          <option value="">Tous les statuts</option>
+          <option value="pending">En attente</option>
+          <option value="confirmed">Confirmé</option>
+          <option value="completed">Terminé</option>
+          <option value="cancelled">Annulé</option>
+          <option value="no-show">No-show</option>
+        </select>
+        <input type="date" id="apptDateFilter" class="form-input">
+        <button class="btn btn-primary" onclick="openApptModal()">
+          <i class="fas fa-plus"></i> Nouveau RDV
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table" id="appointmentsTable">
+          <thead>
+            <tr>
+              <th>Date & Heure</th>
+              <th>Client</th>
+              <th>Barbier</th>
+              <th>Service</th>
+              <th>Prix</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div id="page-clients" class="page-section hidden">
+      <div class="page-actions">
+        <input type="text" id="clientSearch" class="form-input" placeholder="Rechercher un client...">
+        <button class="btn btn-primary" onclick="openClientModal()">
+          <i class="fas fa-user-plus"></i> Nouveau client
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Téléphone</th>
+              <th>Courriel</th>
+              <th>Points fidélité</th>
+              <th>Membre depuis</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clientsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REMINDERS -->
+    <div id="page-reminders" class="page-section hidden">
+      <div class="page-actions">
+        <select id="reminderFilter" class="form-input">
+          <option value="">Tous</option>
+          <option value="pending">En attente</option>
+          <option value="sent">Envoyés</option>
+        </select>
+        <button class="btn btn-primary" onclick="openReminderModal()">
+          <i class="fas fa-plus"></i> Nouvelle relance
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Téléphone</th>
+              <th>Message</th>
+              <th>Canal</th>
+              <th>Planifié</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="remindersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ACCOUNTING -->
+    <div id="page-accounting" class="page-section hidden">
+      <div class="page-actions">
+        <select id="accountingPeriod" class="form-input" onchange="loadAccounting()">
+          <option value="month">Ce mois</option>
+          <option value="week">Cette semaine</option>
+          <option value="today">Aujourd'hui</option>
+          <option value="year">Cette année</option>
+        </select>
+        <button class="btn btn-primary" onclick="openTransactionModal()">
+          <i class="fas fa-plus"></i> Ajouter transaction
+        </button>
+      </div>
+
+      <div class="accounting-summary" id="accountingSummary"></div>
+
+      <div class="dashboard-grid">
+        <div class="card card-full">
+          <div class="card-header">
+            <h3>Revenus vs Dépenses</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="accountingChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container" style="margin-top:1rem">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Catégorie</th>
+              <th>Description</th>
+              <th>Montant</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="transactionsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="page-reports" class="page-section hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-file-pdf"></i> Générer un rapport</h3>
+        </div>
+        <div class="report-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date de début</label>
+              <input type="date" id="reportStart" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Date de fin</label>
+              <input type="date" id="reportEnd" class="form-input">
+            </div>
+          </div>
+          <div class="report-types">
+            <label class="checkbox-card">
+              <input type="checkbox" value="appointments" checked> Rendez-vous
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" value="revenue" checked> Revenus
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" value="clients"> Clients
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" value="expenses"> Dépenses
+            </label>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="generateReport()">
+            <i class="fas fa-download"></i> Générer le rapport PDF
+          </button>
+        </div>
+        <div id="reportPreview" style="margin-top:2rem"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page-section hidden">
+      <div class="settings-grid">
+        <div class="card">
+          <div class="card-header"><h3>Barbiers</h3>
+            <button class="btn btn-sm btn-primary" onclick="openBarberModal()"><i class="fas fa-plus"></i> Ajouter</button>
+          </div>
+          <div id="barbersList"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Services</h3>
+            <button class="btn btn-sm btn-primary" onclick="openServiceModal()"><i class="fas fa-plus"></i> Ajouter</button>
+          </div>
+          <div id="servicesList"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeAllModals()"></div>
+
+<!-- Appointment Modal -->
+<div class="modal" id="apptModal">
+  <div class="modal-header">
+    <h3 id="apptModalTitle">Nouveau rendez-vous</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="apptForm" class="modal-body">
+    <div class="form-group">
+      <label>Client (téléphone)</label>
+      <input type="tel" id="apptClientPhone" class="form-input" placeholder="514-555-0000" required>
+    </div>
+    <div class="form-group">
+      <label>Nom du client</label>
+      <input type="text" id="apptClientName" class="form-input" placeholder="Jean Dupont" required>
+    </div>
+    <div class="form-group">
+      <label>Service</label>
+      <select id="apptService" class="form-input" required onchange="updateApptSlots()">
+        <option value="">-- Choisir --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Barbier</label>
+      <select id="apptBarber" class="form-input" required onchange="updateApptSlots()">
+        <option value="">-- Choisir --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="apptDate" class="form-input" required onchange="updateApptSlots()">
+    </div>
+    <div class="form-group">
+      <label>Heure</label>
+      <select id="apptTime" class="form-input" required>
+        <option value="">-- Choisir date/service/barbier d'abord --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="apptNoteModal" class="form-input" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Client Modal -->
+<div class="modal" id="clientModal">
+  <div class="modal-header">
+    <h3 id="clientModalTitle">Nouveau client</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="clientForm2" class="modal-body">
+    <input type="hidden" id="editClientId">
+    <div class="form-group">
+      <label>Nom *</label>
+      <input type="text" id="editClientName" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Téléphone *</label>
+      <input type="tel" id="editClientPhone" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Courriel</label>
+      <input type="email" id="editClientEmail" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="editClientNotes" class="form-input" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Transaction Modal -->
+<div class="modal" id="transactionModal">
+  <div class="modal-header">
+    <h3>Ajouter une transaction</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="transactionForm" class="modal-body">
+    <div class="form-group">
+      <label>Type</label>
+      <select id="txType" class="form-input" required>
+        <option value="income">Revenu</option>
+        <option value="expense">Dépense</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="txCategory" class="form-input" required>
+        <option value="service">Service</option>
+        <option value="product">Produit</option>
+        <option value="rent">Loyer</option>
+        <option value="supplies">Fournitures</option>
+        <option value="salary">Salaire</option>
+        <option value="utilities">Services publics</option>
+        <option value="other">Autre</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" id="txDescription" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Montant ($)</label>
+      <input type="number" id="txAmount" class="form-input" step="0.01" min="0" required>
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="txDate" class="form-input" required>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Reminder Modal -->
+<div class="modal" id="reminderModal">
+  <div class="modal-header">
+    <h3>Nouvelle relance</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="reminderForm" class="modal-body">
+    <div class="form-group">
+      <label>Client</label>
+      <select id="reminderClientId" class="form-input" required></select>
+    </div>
+    <div class="form-group">
+      <label>Canal</label>
+      <select id="reminderChannel" class="form-input">
+        <option value="sms">SMS</option>
+        <option value="email">Courriel</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="reminderMessage" class="form-input" rows="3" required placeholder="Ex: Votre barbier préféré vous manque ! Prenez rendez-vous maintenant..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Date et heure d'envoi</label>
+      <input type="datetime-local" id="reminderScheduled" class="form-input" required>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Planifier</button>
+    </div>
+  </form>
+</div>
+
+<!-- Barber Modal -->
+<div class="modal" id="barberModal">
+  <div class="modal-header">
+    <h3 id="barberModalTitle">Nouveau barbier</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="barberForm" class="modal-body">
+    <input type="hidden" id="editBarberId">
+    <div class="form-group">
+      <label>Nom *</label>
+      <input type="text" id="editBarberName" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Courriel</label>
+      <input type="email" id="editBarberEmail" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Téléphone</label>
+      <input type="tel" id="editBarberPhone" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Couleur d'agenda</label>
+      <input type="color" id="editBarberColor" class="form-input" value="#3B82F6">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Service Modal -->
+<div class="modal" id="serviceModal">
+  <div class="modal-header">
+    <h3 id="serviceModalTitle">Nouveau service</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="serviceForm" class="modal-body">
+    <input type="hidden" id="editServiceId">
+    <div class="form-group">
+      <label>Nom *</label>
+      <input type="text" id="editServiceName" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Durée (minutes)</label>
+      <input type="number" id="editServiceDuration" class="form-input" value="30" min="15" step="15" required>
+    </div>
+    <div class="form-group">
+      <label>Prix ($)</label>
+      <input type="number" id="editServicePrice" class="form-input" step="0.01" min="0" required>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="editServiceDescription" class="form-input" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>
