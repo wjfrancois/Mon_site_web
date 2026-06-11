@@ -1,0 +1,4 @@
+# User-uploaded tenant images — not tracked in git
+# On a VPS, these live on disk; in Codespaces they're ephemeral
+*
+!.gitignore
