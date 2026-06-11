@@ -1040,17 +1040,9 @@ function setupModalForms() {
     e.preventDefault();
     const id = document.getElementById('editProductId').value;
     const photoInput = document.getElementById('productPhotoInput');
-    const formData = new FormData();
-    if (photoInput.files[0]) formData.append('photo', photoInput.files[0]);
-    formData.append('name', document.getElementById('editProductName').value);
-    formData.append('brand', document.getElementById('editProductBrand').value);
-    formData.append('type', document.getElementById('editProductType').value);
-    formData.append('price', document.getElementById('editProductPrice').value);
-    formData.append('description', document.getElementById('editProductDescription').value);
 
-    const token = localStorage.getItem('token');
     if (id) {
-      // Update text fields first
+      // Update text fields
       await authFetch(`${API}/api/admin/products/${id}`, {
         method: 'PUT',
         body: JSON.stringify({
@@ -1065,18 +1057,22 @@ function setupModalForms() {
       if (photoInput.files[0]) {
         const pf = new FormData();
         pf.append('photo', photoInput.files[0]);
-        await fetch(`${API}/api/admin/products/${id}/photo`, {
-          method: 'PATCH',
-          headers: { Authorization: `Bearer ${token}` },
-          body: pf
-        });
+        await authFetch(`${API}/api/admin/products/${id}/photo`, { method: 'PATCH', body: pf });
       }
     } else {
-      await fetch(`${API}/api/admin/products`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
+      const formData = new FormData();
+      if (photoInput.files[0]) formData.append('photo', photoInput.files[0]);
+      formData.append('name', document.getElementById('editProductName').value);
+      formData.append('brand', document.getElementById('editProductBrand').value);
+      formData.append('type', document.getElementById('editProductType').value);
+      formData.append('price', document.getElementById('editProductPrice').value);
+      formData.append('description', document.getElementById('editProductDescription').value);
+      const res = await authFetch(`${API}/api/admin/products`, { method: 'POST', body: formData });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Erreur lors de l\'ajout', 'error');
+        return;
+      }
     }
     showToast(id ? 'Produit mis à jour' : 'Produit ajouté', 'success');
     closeAllModals();
