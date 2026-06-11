@@ -70,6 +70,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       const salonNameEl = document.getElementById('sidebarSalonName');
       if (salonNameEl && me.tenant?.name) salonNameEl.textContent = me.tenant.name;
 
+      // Branding : couleur accent + titre + logo
+      if (me.tenant?.primary_color) {
+        document.documentElement.style.setProperty('--accent', me.tenant.primary_color);
+        document.documentElement.style.setProperty('--accent-dark', me.tenant.primary_color);
+      }
+      document.title = `${me.tenant?.name || 'Mon Salon'} – Admin`;
+      const sidebarLogoImg = document.getElementById('sidebarLogoImg');
+      const sidebarIconEl  = document.getElementById('sidebarIconEl');
+      if (sidebarLogoImg && me.tenant?.logo_url) {
+        sidebarLogoImg.src = me.tenant.logo_url;
+        sidebarLogoImg.style.display = 'block';
+        if (sidebarIconEl) sidebarIconEl.style.display = 'none';
+      }
+
       if (me.booking_url) {
         const card = document.getElementById('dashboardBookingUrl');
         const link = document.getElementById('dashboardBookingLink');

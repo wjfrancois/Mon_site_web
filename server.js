@@ -39,6 +39,7 @@ app.use('/', require('./routes/auth'));
 app.use('/api/book', require('./routes/booking'));
 app.use('/api/onboarding', require('./routes/onboarding'));
 app.use('/api/stripe', require('./routes/stripe'));
+app.use('/api/superadmin', require('./routes/superadmin'));
 
 // Services et barbers en GET public (pour index.html legacy)
 app.get('/api/services', (req, res, next) => {
@@ -85,6 +86,7 @@ app.get('/admin', (req, res) => res.sendFile(path.join(VIEWS, 'admin.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(VIEWS, 'login.html')));
 app.get('/signup', (req, res) => res.sendFile(path.join(VIEWS, 'onboarding.html')));
 app.get('/pricing', (req, res) => res.sendFile(path.join(VIEWS, 'pricing.html')));
+app.get('/superadmin', (req, res) => res.sendFile(path.join(VIEWS, 'superadmin.html')));
 app.get('/book/:slug', (req, res) => res.sendFile(path.join(VIEWS, 'booking.html')));
 
 // === CRON : Rappels SMS/Email toutes les 5 minutes ===
