@@ -135,7 +135,7 @@ app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 app.get('/{*path}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => {
-  console.log(`✂  BarberSaaS – App démarrée sur http://localhost:${PORT}`);
+  console.log(`✂  Créno – App démarrée sur http://localhost:${PORT}`);
   console.log(`🔒 Admin: http://localhost:${PORT}/admin`);
 });
 
