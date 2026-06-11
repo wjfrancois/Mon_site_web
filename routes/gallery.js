@@ -37,15 +37,16 @@ router.get('/', (req, res) => {
 // POST /api/admin/gallery
 router.post('/', (req, res, next) => {
   upload(req, res, (err) => {
+    console.log('[Gallery POST] tenant:', req.tenantId, 'err:', err?.message, 'file:', req.file?.originalname);
     try {
       if (err) return res.status(400).json({ error: err.message });
-      if (!req.file) return res.status(400).json({ error: 'Format non supporté ou fichier manquant (.jpg, .png, .webp)' });
+      if (!req.file) return res.status(400).json({ error: 'Format non supporté (.jpg, .png, .webp requis)' });
       const url = `/img/tenants/${req.tenant.slug}/gallery/${req.file.filename}`;
       const caption = (req.body && req.body.caption) ? req.body.caption : '';
       const result = db.prepare('INSERT INTO gallery (tenant_id, url, caption) VALUES (?, ?, ?)').run(req.tenantId, url, caption);
       res.json({ id: result.lastInsertRowid, url, caption });
     } catch (e) {
-      console.error('[Gallery POST]', e.message);
+      console.error('[Gallery POST] error:', e.message);
       next(e);
     }
   });
