@@ -169,6 +169,12 @@
     <!-- CALENDAR -->
     <div id="page-calendar" class="page-section hidden">
       <div class="page-actions">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-secondary" onclick="calendarPrevDay()" title="Jour précédent"><i class="fas fa-chevron-left"></i></button>
+          <button class="btn btn-secondary" onclick="calendarToday()" style="font-size:0.8rem;padding:6px 10px;">Aujourd'hui</button>
+          <button class="btn btn-secondary" onclick="calendarNextDay()" title="Jour suivant"><i class="fas fa-chevron-right"></i></button>
+          <span id="calendarDayLabel" style="font-weight:600;min-width:160px;text-align:center;"></span>
+        </div>
         <input type="date" id="calendarDate" class="form-input">
         <select id="calendarBarber" class="form-input">
           <option value="">Tous les barbiers</option>

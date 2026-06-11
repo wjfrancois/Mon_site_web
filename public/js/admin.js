@@ -228,21 +228,61 @@ function renderTodayList(data) {
 }
 
 // ---- CALENDAR ----
+let _calendarInitialized = false;
 async function loadCalendar() {
   const dateEl = document.getElementById('calendarDate');
-  if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
-  dateEl.addEventListener('change', loadCalendar);
-  document.getElementById('calendarBarber').addEventListener('change', loadCalendar);
+  if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
+  // Attacher les listeners une seule fois
+  if (!_calendarInitialized) {
+    _calendarInitialized = true;
+    dateEl.addEventListener('change', loadCalendar);
+    document.getElementById('calendarBarber').addEventListener('change', loadCalendar);
+  }
 
   await loadBarberSelectOptions('calendarBarber');
+  await refreshCalendar();
+}
+
+async function refreshCalendar() {
+  const dateEl = document.getElementById('calendarDate');
   const date = dateEl.value;
   const barberId = document.getElementById('calendarBarber').value;
+
+  // Afficher le jour formaté en haut
+  const label = document.getElementById('calendarDayLabel');
+  if (label) {
+    const d = new Date(date + 'T12:00:00');
+    label.textContent = d.toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
 
   const params = new URLSearchParams({ date });
   if (barberId) params.set('barber_id', barberId);
 
   const appointments = await authFetch(`${API}/api/appointments?${params}`).then(r => r.json());
   renderCalendarView(appointments, date, barberId);
+}
+
+function calendarPrevDay() {
+  const dateEl = document.getElementById('calendarDate');
+  const d = new Date(dateEl.value + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  dateEl.value = d.toISOString().slice(0, 10);
+  refreshCalendar();
+}
+
+function calendarNextDay() {
+  const dateEl = document.getElementById('calendarDate');
+  const d = new Date(dateEl.value + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  dateEl.value = d.toISOString().slice(0, 10);
+  refreshCalendar();
+}
+
+function calendarToday() {
+  const dateEl = document.getElementById('calendarDate');
+  dateEl.value = new Date().toISOString().slice(0, 10);
+  refreshCalendar();
 }
 
 function renderCalendarView(appointments, date, barberId) {
