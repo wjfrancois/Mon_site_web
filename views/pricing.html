@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tarifs – BarberSaaS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    body { background: #fff; }
+    .pricing-nav {
+      background: var(--primary); padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+    }
+    .pricing-nav .nav-logo {
+      display: flex; align-items: center; gap: 0.75rem;
+      color: white; font-weight: 700; font-size: 1.1rem; text-decoration: none;
+    }
+    .pricing-nav .nav-logo i { color: var(--accent); font-size: 1.3rem; }
+    .pricing-nav .nav-links { display: flex; gap: 1.5rem; align-items: center; }
+    .pricing-nav .nav-links a {
+      color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .pricing-nav .nav-links a:hover { color: var(--accent); }
+    .pricing-nav .nav-links .btn-nav {
+      background: var(--accent); color: var(--primary);
+      padding: 0.5rem 1.25rem; border-radius: 8px; font-weight: 600;
+      font-size: 0.875rem;
+    }
+    .pricing-nav .nav-links .btn-nav:hover { filter: brightness(0.9); }
+    .features-section { padding: 4rem 1.5rem; background: var(--surface); }
+    .features-section h2 { text-align: center; font-family: 'Playfair Display', serif; font-size: 2rem; color: var(--primary); margin-bottom: 0.5rem; }
+    .features-section .section-sub { text-align: center; color: var(--text-light); margin-bottom: 3rem; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.5rem; max-width: 900px; margin: 0 auto; }
+    .feature-item { background: white; border-radius: var(--radius); padding: 1.75rem; text-align: center; box-shadow: var(--shadow); }
+    .feature-item .feat-icon { width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, var(--primary), #0f3460); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.3rem; color: var(--accent); }
+    .feature-item h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    .feature-item p { font-size: 0.85rem; color: var(--text-light); line-height: 1.5; }
+    .pricing-footer { background: var(--primary); color: rgba(255,255,255,0.6); text-align: center; padding: 2rem; font-size: 0.85rem; }
+    .pricing-footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="pricing-nav">
+  <a href="/" class="nav-logo">
+    <i class="fas fa-cut"></i>
+    <span>BarberSaaS</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Accueil</a>
+    <a href="/login">Connexion</a>
+    <a href="/signup" class="btn-nav">Essai gratuit</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="pricing-hero">
+  <p class="hero-tag" style="color:rgba(255,255,255,0.7);letter-spacing:2px;font-size:0.8rem;text-transform:uppercase;margin-bottom:1rem">Tarifs simples et transparents</p>
+  <h1>Gérez votre salon,<br>développez votre clientèle</h1>
+  <p style="color:rgba(255,255,255,0.75);font-size:1.1rem;max-width:540px;margin:1rem auto 0">Tout ce dont vous avez besoin pour automatiser vos réservations et fidéliser vos clients. Essai gratuit 30 jours, sans carte de crédit.</p>
+</section>
+
+<!-- PLANS GRID -->
+<section style="padding: 0 1.5rem 4rem; background: white;">
+  <div class="pricing-grid">
+
+    <!-- Starter -->
+    <div class="pricing-card">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">29 <span>$ / mois</span></div>
+      <p style="font-size:0.85rem;color:var(--text-light);margin:0.5rem 0 1rem">Idéal pour les barbiers indépendants</p>
+      <ul class="plan-features">
+        <li>1 barbier</li>
+        <li>100 rendez-vous / mois</li>
+        <li>50 SMS de rappel</li>
+        <li>Page de réservation en ligne</li>
+        <li>Personnalisation des couleurs et logo</li>
+        <li>Accès tableau de bord</li>
+      </ul>
+      <a href="/signup?plan=starter" class="btn btn-outline" style="width:100%;display:block;text-align:center;text-decoration:none;padding:0.75rem">
+        Commencer — Gratuit 30 jours
+      </a>
+    </div>
+
+    <!-- Pro (featured) -->
+    <div class="pricing-card featured">
+      <div class="popular-badge">POPULAIRE</div>
+      <div class="plan-name" style="color:var(--accent)">Pro</div>
+      <div class="plan-price">59 <span>$ / mois</span></div>
+      <p style="font-size:0.85rem;color:var(--text-light);margin:0.5rem 0 1rem">Pour les salons en croissance</p>
+      <ul class="plan-features">
+        <li>3 barbiers</li>
+        <li>Rendez-vous illimités</li>
+        <li>200 SMS de rappel</li>
+        <li>Tout ce qu'inclut Starter</li>
+        <li>Rapports PDF détaillés</li>
+        <li>Comptabilité avancée</li>
+        <li>Support prioritaire</li>
+      </ul>
+      <a href="/signup?plan=pro" class="btn btn-primary" style="width:100%;display:block;text-align:center;text-decoration:none;padding:0.75rem">
+        Commencer — Gratuit 30 jours
+      </a>
+    </div>
+
+    <!-- Business -->
+    <div class="pricing-card">
+      <div class="plan-name">Business</div>
+      <div class="plan-price">99 <span>$ / mois</span></div>
+      <p style="font-size:0.85rem;color:var(--text-light);margin:0.5rem 0 1rem">Pour les chaînes et les grands salons</p>
+      <ul class="plan-features">
+        <li>Barbiers illimités</li>
+        <li>Rendez-vous illimités</li>
+        <li>500 SMS de rappel</li>
+        <li>Tout ce qu'inclut Pro</li>
+        <li>Multi-succursale</li>
+        <li>Accès API</li>
+        <li>Gestionnaire de compte dédié</li>
+      </ul>
+      <a href="/signup?plan=business" class="btn btn-outline" style="width:100%;display:block;text-align:center;text-decoration:none;padding:0.75rem">
+        Commencer — Gratuit 30 jours
+      </a>
+    </div>
+
+  </div>
+
+  <p style="text-align:center;color:var(--text-light);font-size:0.85rem;margin-top:1rem">
+    <i class="fas fa-shield-alt" style="color:var(--green)"></i>
+    Essai gratuit 30 jours — Aucune carte de crédit requise — Annulez à tout moment
+  </p>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section">
+  <h2>Tout ce dont votre salon a besoin</h2>
+  <p class="section-sub">Une plateforme complète pour moderniser votre salon de coiffure</p>
+  <div class="features-grid">
+    <div class="feature-item">
+      <div class="feat-icon"><i class="fas fa-calendar-check"></i></div>
+      <h3>Réservation en ligne</h3>
+      <p>Vos clients réservent 24h/24 depuis leur téléphone. Plus d'appels manqués.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feat-icon"><i class="fas fa-sms"></i></div>
+      <h3>SMS de rappel</h3>
+      <p>Réduisez les absences avec des rappels automatiques par SMS avant chaque rendez-vous.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feat-icon"><i class="fas fa-dollar-sign"></i></div>
+      <h3>Comptabilité intégrée</h3>
+      <p>Suivez vos revenus et dépenses en temps réel. Générez des rapports en un clic.</p>
+    </div>
+    <div class="feature-item">
+      <div class="feat-icon"><i class="fas fa-file-pdf"></i></div>
+      <h3>Rapports PDF</h3>
+      <p>Exportez vos données en PDF professionnel pour vos comptables ou vos archives.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="pricing-footer">
+  <p>&copy; 2026 BarberSaaS — <a href="/login">Connexion</a> · <a href="/signup">Essai gratuit</a></p>
+</footer>
+
+</body>
+</html>

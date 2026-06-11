@@ -6,8 +6,35 @@ const API = '';
 let revenueChart, servicesChart, accountingChart;
 let allClients = [];
 
+// ---- JWT AUTH ----
+const TOKEN_KEY = 'accessToken';
+const REFRESH_KEY = 'refreshToken';
+
+async function authFetch(url, opts = {}) {
+  let token = localStorage.getItem(TOKEN_KEY);
+  if (!token) { window.location.href = '/login'; return null; }
+  const headers = { ...opts.headers, 'Authorization': `Bearer ${token}` };
+  if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  let res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) {
+    const refresh = localStorage.getItem(REFRESH_KEY);
+    if (refresh) {
+      const r = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: refresh }) });
+      if (r.ok) {
+        const { accessToken } = await r.json();
+        localStorage.setItem(TOKEN_KEY, accessToken);
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        res = await fetch(url, { ...opts, headers });
+      } else { localStorage.clear(); window.location.href = '/login'; return null; }
+    } else { localStorage.clear(); window.location.href = '/login'; return null; }
+  }
+  return res;
+}
+
 // ---- INIT ----
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!localStorage.getItem(TOKEN_KEY)) { window.location.href = '/login'; return; }
+
   initSidebar();
   initDateDisplay();
   loadDashboard();
@@ -16,6 +43,31 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-item[data-page]').forEach(el => {
     el.addEventListener('click', e => { e.preventDefault(); showPage(el.dataset.page); });
   });
+
+  // Charger les infos utilisateur et plan
+  try {
+    const meRes = await authFetch('/api/admin/me');
+    if (meRes?.ok) {
+      const me = await meRes.json();
+      const planBadge = document.getElementById('planBadge');
+      if (planBadge) {
+        planBadge.textContent = me.tenant.plan.toUpperCase();
+        planBadge.className = `plan-badge ${me.tenant.plan_status === 'past_due' ? 'past_due' : me.tenant.plan_status === 'trialing' ? 'trialing' : ''}`;
+      }
+      const userNameEl = document.getElementById('userName');
+      if (userNameEl) userNameEl.textContent = me.user.name || me.user.email;
+      const avatarEl = document.querySelector('.avatar');
+      if (avatarEl) avatarEl.textContent = (me.user.name || me.user.email)[0].toUpperCase();
+
+      if (me.tenant.plan_status === 'trialing' && me.tenant.days_left_trial <= 7) showTrialBanner(me.tenant.days_left_trial);
+      if (me.tenant.plan_status === 'past_due') showPaymentFailedBanner();
+
+      if (me.user.role !== 'owner') {
+        document.querySelectorAll('[data-owner-only]').forEach(el => el.style.display = 'none');
+      }
+      window._tenantBookingUrl = me.booking_url;
+    }
+  } catch(e) { console.error('Error loading user info:', e); }
 });
 
 // ---- SIDEBAR ----
@@ -43,7 +95,10 @@ const pageTitles = {
   reminders: 'Relances',
   accounting: 'Comptabilité',
   reports: 'Rapports',
-  settings: 'Paramètres'
+  settings: 'Paramètres',
+  customization: 'Personnalisation',
+  team: 'Équipe',
+  billing: 'Abonnement'
 };
 
 function showPage(page) {
@@ -54,14 +109,15 @@ function showPage(page) {
   document.getElementById('pageTitle').textContent = pageTitles[page] || page;
   document.getElementById('sidebar').classList.remove('open');
 
-  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, settings: loadSettings };
+  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, settings: loadSettings, customization: loadCustomization, team: loadTeam, billing: loadBilling };
   loaders[page]?.();
 }
 
 // ---- DASHBOARD ----
 async function loadDashboard() {
   try {
-    const data = await fetch(`${API}/api/stats/dashboard`).then(r => r.json());
+    const res = await authFetch(`${API}/api/stats/dashboard`);
+    const data = await res.json();
 
     document.getElementById('kpiToday').textContent = data.today_appointments;
     document.getElementById('kpiRevenue').textContent = `${data.month_revenue.toFixed(2)} $`;
@@ -159,7 +215,7 @@ async function loadCalendar() {
   const params = new URLSearchParams({ date });
   if (barberId) params.set('barber_id', barberId);
 
-  const appointments = await fetch(`${API}/api/appointments?${params}`).then(r => r.json());
+  const appointments = await authFetch(`${API}/api/appointments?${params}`).then(r => r.json());
   renderCalendarView(appointments, date, barberId);
 }
 
@@ -218,7 +274,7 @@ async function loadAppointments() {
   if (status) params.set('status', status);
   if (date) params.set('date', date);
 
-  let appointments = await fetch(`${API}/api/appointments?${params}`).then(r => r.json());
+  let appointments = await authFetch(`${API}/api/appointments?${params}`).then(r => r.json());
   if (search) {
     const s = search.toLowerCase();
     appointments = appointments.filter(a => a.client_name?.toLowerCase().includes(s) || a.service_name?.toLowerCase().includes(s) || a.barber_name?.toLowerCase().includes(s));
@@ -255,7 +311,7 @@ async function loadAppointments() {
 
 async function updateApptStatus(id, status) {
   if (!confirm(`Confirmer le changement de statut: "${status}" ?`)) return;
-  await fetch(`${API}/api/appointments/${id}/status`, {
+  await authFetch(`${API}/api/appointments/${id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
@@ -276,7 +332,7 @@ async function loadClients() {
   document.getElementById('clientSearch').addEventListener('input', loadClients);
 
   const params = search ? `?search=${encodeURIComponent(search)}` : '';
-  allClients = await fetch(`${API}/api/clients${params}`).then(r => r.json());
+  allClients = await authFetch(`${API}/api/clients${params}`).then(r => r.json());
 
   const tbody = document.getElementById('clientsBody');
   if (!allClients.length) {
@@ -302,7 +358,7 @@ async function loadClients() {
 
 async function deleteClient(id) {
   if (!confirm('Supprimer ce client ?')) return;
-  await fetch(`${API}/api/clients/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/clients/${id}`, { method: 'DELETE' });
   showToast('Client supprimé', 'success');
   loadClients();
 }
@@ -313,7 +369,7 @@ async function loadReminders() {
   document.getElementById('reminderFilter').addEventListener('change', loadReminders);
 
   const params = status ? `?status=${status}` : '';
-  const reminders = await fetch(`${API}/api/reminders${params}`).then(r => r.json());
+  const reminders = await authFetch(`${API}/api/reminders${params}`).then(r => r.json());
 
   const tbody = document.getElementById('remindersBody');
   if (!reminders.length) {
@@ -339,7 +395,7 @@ async function loadReminders() {
 }
 
 async function sendReminder(id) {
-  const res = await fetch(`${API}/api/reminders/${id}/send`, { method: 'POST' });
+  const res = await authFetch(`${API}/api/reminders/${id}/send`, { method: 'POST' });
   const data = await res.json();
   showToast(data.message || 'Rappel envoyé', 'success');
   loadReminders();
@@ -347,7 +403,7 @@ async function sendReminder(id) {
 
 async function deleteReminder(id) {
   if (!confirm('Supprimer ce rappel ?')) return;
-  await fetch(`${API}/api/reminders/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/reminders/${id}`, { method: 'DELETE' });
   showToast('Rappel supprimé', 'success');
   loadReminders();
 }
@@ -405,7 +461,7 @@ function renderAccountingChart(data) {
 
 async function deleteTransaction(id) {
   if (!confirm('Supprimer cette transaction ?')) return;
-  await fetch(`${API}/api/accounting/transactions/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/accounting/transactions/${id}`, { method: 'DELETE' });
   showToast('Transaction supprimée', 'success');
   loadAccounting();
 }
@@ -430,7 +486,7 @@ async function generateReport() {
   const end = document.getElementById('reportEnd').value;
   if (!start || !end) { showToast('Veuillez sélectionner les dates', 'error'); return; }
 
-  const data = await fetch(`${API}/api/stats/reports?start_date=${start}&end_date=${end}`).then(r => r.json());
+  const data = await authFetch(`${API}/api/stats/reports?start_date=${start}&end_date=${end}`).then(r => r.json());
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -535,10 +591,14 @@ async function generateReport() {
 
 // ---- SETTINGS ----
 async function loadSettings() {
+  const [barbersRes, servicesRes, siteSettingsRes] = await Promise.all([
+    authFetch('/api/barbers'),
+    authFetch('/api/services'),
+    authFetch('/api/settings')
+  ]);
+  if (!barbersRes?.ok || !servicesRes?.ok || !siteSettingsRes?.ok) return;
   const [barbers, services, siteSettings] = await Promise.all([
-    fetch(`${API}/api/barbers`).then(r => r.json()),
-    fetch(`${API}/api/services`).then(r => r.json()),
-    fetch(`${API}/api/settings`).then(r => r.json())
+    barbersRes.json(), servicesRes.json(), siteSettingsRes.json()
   ]);
 
   // Hero image preview
@@ -590,14 +650,14 @@ async function loadSettings() {
 
 async function deleteService(id) {
   if (!confirm('Désactiver ce service ?')) return;
-  await fetch(`${API}/api/services/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/services/${id}`, { method: 'DELETE' });
   showToast('Service désactivé', 'success');
   loadSettings();
 }
 
 async function deleteBarber(id, name) {
   if (!confirm(`Supprimer le barbier "${name}" ?\n\nNote: impossible s'il a des rendez-vous à venir non annulés.`)) return;
-  const res = await fetch(`${API}/api/barbers/${id}`, { method: 'DELETE' });
+  const res = await authFetch(`${API}/api/barbers/${id}`, { method: 'DELETE' });
   const data = await res.json();
   if (res.ok) {
     showToast(`Barbier "${name}" désactivé`, 'success');
@@ -617,7 +677,7 @@ function openApptModal(id) {
 }
 
 async function loadBarberSelectOptions(selectId) {
-  const barbers = await fetch(`${API}/api/barbers`).then(r => r.json());
+  const barbers = await authFetch(`${API}/api/barbers`).then(r => r.json());
   const sel = document.getElementById(selectId);
   if (!sel) return;
   const first = sel.options[0];
@@ -631,7 +691,7 @@ async function loadBarberSelectOptions(selectId) {
 }
 
 async function loadServiceSelectOptions(selectId) {
-  const services = await fetch(`${API}/api/services`).then(r => r.json());
+  const services = await authFetch(`${API}/api/services`).then(r => r.json());
   const sel = document.getElementById(selectId);
   if (!sel) return;
   const first = sel.options[0];
@@ -651,7 +711,7 @@ async function updateApptSlots() {
 
   const sel = document.getElementById('apptTime');
   sel.innerHTML = '<option>Chargement...</option>';
-  const data = await fetch(`${API}/api/appointments/available-slots?date=${date}&barber_id=${barberId}&service_id=${serviceId}`).then(r => r.json());
+  const data = await authFetch(`${API}/api/appointments/available-slots?date=${date}&barber_id=${barberId}&service_id=${serviceId}`).then(r => r.json());
   sel.innerHTML = data.closed ? '<option>Fermé ce jour</option>' : data.slots.map(s => `<option value="${s}">${s}</option>`).join('') || '<option>Aucun créneau</option>';
 }
 
@@ -659,7 +719,7 @@ async function openClientModal(id) {
   document.getElementById('editClientId').value = id || '';
   document.getElementById('clientModalTitle').textContent = id ? 'Modifier client' : 'Nouveau client';
   if (id) {
-    const c = allClients.find(x => x.id === id) || await fetch(`${API}/api/clients/${id}`).then(r => r.json());
+    const c = allClients.find(x => x.id === id) || await authFetch(`${API}/api/clients/${id}`).then(r => r.json());
     document.getElementById('editClientName').value = c.name;
     document.getElementById('editClientPhone').value = c.phone;
     document.getElementById('editClientEmail').value = c.email || '';
@@ -671,7 +731,7 @@ async function openClientModal(id) {
 }
 
 async function openReminderModal() {
-  const clients = allClients.length ? allClients : await fetch(`${API}/api/clients`).then(r => r.json());
+  const clients = allClients.length ? allClients : await authFetch(`${API}/api/clients`).then(r => r.json());
   const sel = document.getElementById('reminderClientId');
   sel.innerHTML = clients.map(c => `<option value="${c.id}">${c.name} (${c.phone})</option>`).join('');
   const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes()/15)*15);
@@ -683,7 +743,7 @@ async function openBarberModal(id) {
   document.getElementById('editBarberId').value = id || '';
   document.getElementById('barberModalTitle').textContent = id ? 'Modifier barbier' : 'Nouveau barbier';
   if (id) {
-    const barbers = await fetch(`${API}/api/barbers`).then(r => r.json());
+    const barbers = await authFetch(`${API}/api/barbers`).then(r => r.json());
     const b = barbers.find(x => x.id === id);
     if (b) {
       document.getElementById('editBarberName').value = b.name;
@@ -699,7 +759,7 @@ async function openServiceModal(id) {
   document.getElementById('editServiceId').value = id || '';
   document.getElementById('serviceModalTitle').textContent = id ? 'Modifier service' : 'Nouveau service';
   if (id) {
-    const services = await fetch(`${API}/api/services`).then(r => r.json());
+    const services = await authFetch(`${API}/api/services`).then(r => r.json());
     const s = services.find(x => x.id === id);
     if (s) {
       document.getElementById('editServiceName').value = s.name;
@@ -740,7 +800,7 @@ function setupModalForms() {
       time: document.getElementById('apptTime').value,
       notes: document.getElementById('apptNoteModal').value
     };
-    const res = await fetch(`${API}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await authFetch(`${API}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json();
     if (res.ok) { showToast('Rendez-vous créé', 'success'); closeAllModals(); loadAppointments(); loadDashboard(); }
     else showToast(data.error || 'Erreur', 'error');
@@ -750,25 +810,25 @@ function setupModalForms() {
     e.preventDefault();
     const id = document.getElementById('editClientId').value;
     const body = { name: document.getElementById('editClientName').value, phone: document.getElementById('editClientPhone').value, email: document.getElementById('editClientEmail').value, notes: document.getElementById('editClientNotes').value };
-    const url = id ? `${API}/api/clients/${id}` : `${API}/api/clients`;
+    const url = id ? `/api/clients/${id}` : '/api/clients';
     const method = id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json();
-    if (res.ok || res.status === 409) { showToast(id ? 'Client mis à jour' : 'Client ajouté', 'success'); closeAllModals(); loadClients(); }
-    else showToast(data.error || 'Erreur', 'error');
+    const res = await authFetch(url, { method, body: JSON.stringify(body) });
+    const data = await res?.json();
+    if (res?.ok || res?.status === 409) { showToast(id ? 'Client mis à jour' : 'Client ajouté', 'success'); closeAllModals(); loadClients(); }
+    else showToast(data?.error || 'Erreur', 'error');
   });
 
   document.getElementById('transactionForm').addEventListener('submit', async e => {
     e.preventDefault();
     const body = { type: document.getElementById('txType').value, category: document.getElementById('txCategory').value, description: document.getElementById('txDescription').value, amount: parseFloat(document.getElementById('txAmount').value), date: document.getElementById('txDate').value };
-    await fetch(`${API}/api/accounting/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(`${API}/api/accounting/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     showToast('Transaction ajoutée', 'success'); closeAllModals(); loadAccounting();
   });
 
   document.getElementById('reminderForm').addEventListener('submit', async e => {
     e.preventDefault();
     const body = { client_id: document.getElementById('reminderClientId').value, message: document.getElementById('reminderMessage').value, channel: document.getElementById('reminderChannel').value, scheduled_at: document.getElementById('reminderScheduled').value.replace('T', ' ') };
-    await fetch(`${API}/api/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(`${API}/api/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     showToast('Relance planifiée', 'success'); closeAllModals(); loadReminders();
   });
 
@@ -776,9 +836,9 @@ function setupModalForms() {
     e.preventDefault();
     const id = document.getElementById('editBarberId').value;
     const body = { name: document.getElementById('editBarberName').value, email: document.getElementById('editBarberEmail').value, phone: document.getElementById('editBarberPhone').value, color: document.getElementById('editBarberColor').value };
-    const url = id ? `${API}/api/barbers/${id}` : `${API}/api/barbers`;
+    const url = id ? `/api/barbers/${id}` : '/api/barbers';
     const method = id ? 'PUT' : 'POST';
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(url, { method, body: JSON.stringify(body) });
     showToast(id ? 'Barbier mis à jour' : 'Barbier ajouté', 'success'); closeAllModals(); loadSettings();
   });
 
@@ -786,11 +846,19 @@ function setupModalForms() {
     e.preventDefault();
     const id = document.getElementById('editServiceId').value;
     const body = { name: document.getElementById('editServiceName').value, duration: parseInt(document.getElementById('editServiceDuration').value), price: parseFloat(document.getElementById('editServicePrice').value), description: document.getElementById('editServiceDescription').value };
-    const url = id ? `${API}/api/services/${id}` : `${API}/api/services`;
+    const url = id ? `/api/services/${id}` : '/api/services';
     const method = id ? 'PUT' : 'POST';
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(url, { method, body: JSON.stringify(body) });
     showToast(id ? 'Service mis à jour' : 'Service ajouté', 'success'); closeAllModals(); loadSettings();
   });
+
+  const teamFormEl = document.getElementById('teamForm');
+  if (teamFormEl) {
+    teamFormEl.addEventListener('submit', async e => {
+      e.preventDefault();
+      await saveTeamMember();
+    });
+  }
 }
 
 // ---- TOAST ----
@@ -814,57 +882,199 @@ function statusBadge(status) {
 }
 
 async function logout() {
-  await fetch('/logout', { method: 'POST' });
+  const refresh = localStorage.getItem('refreshToken');
+  await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: refresh }) });
+  localStorage.clear();
   window.location.href = '/login';
 }
 
-// ---- HERO IMAGE ----
+// ---- HERO IMAGE (legacy settings page) ----
 async function uploadHeroImage(input) {
   if (!input.files[0]) return;
   const progress = document.getElementById('uploadProgress');
-  progress.style.display = 'flex';
-
+  if (progress) progress.style.display = 'flex';
   const formData = new FormData();
   formData.append('image', input.files[0]);
-
   try {
-    const res = await fetch(`${API}/api/settings/upload/hero`, { method: 'POST', body: formData });
+    const res = await authFetch(`/api/admin/customization/hero-photo`, { method: 'POST', body: formData });
     const data = await res.json();
-    if (res.ok) {
-      showToast('Image mise à jour avec succès', 'success');
-      loadSettings();
-    } else {
-      showToast(data.error || 'Erreur lors du téléversement', 'error');
-    }
-  } catch (e) {
-    showToast('Erreur de connexion', 'error');
-  } finally {
-    progress.style.display = 'none';
-    input.value = '';
-  }
+    if (res.ok) { showToast('Image mise à jour avec succès', 'success'); loadSettings(); }
+    else showToast(data.error || 'Erreur téléversement', 'error');
+  } catch (e) { showToast('Erreur de connexion', 'error'); }
+  finally { if (progress) progress.style.display = 'none'; input.value = ''; }
 }
 
 async function removeHeroImage() {
   if (!confirm('Supprimer l\'image et revenir au fond par défaut ?')) return;
-  const res = await fetch(`${API}/api/settings/upload/hero`, { method: 'DELETE' });
-  if (res.ok) {
-    showToast('Image supprimée — fond par défaut restauré', 'success');
-    loadSettings();
-  }
+  const res = await authFetch(`/api/admin/customization/hero-photo`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Image supprimée — fond par défaut restauré', 'success'); loadSettings(); }
 }
 
 async function saveHeroTexts() {
-  const updates = [
-    { key: 'hero_tag', value: document.getElementById('settingHeroTag').value },
-    { key: 'hero_title', value: document.getElementById('settingHeroTitle').value },
-    { key: 'hero_subtitle', value: document.getElementById('settingHeroSubtitle').value },
-  ];
-  await Promise.all(updates.map(u =>
-    fetch(`${API}/api/settings/${u.key}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ value: u.value })
-    })
-  ));
-  showToast('Textes mis à jour', 'success');
+  const body = {
+    hero_tag: document.getElementById('settingHeroTag')?.value || '',
+    hero_title: document.getElementById('settingHeroTitle')?.value || '',
+    hero_subtitle: document.getElementById('settingHeroSubtitle')?.value || ''
+  };
+  const res = await authFetch(`/api/admin/customization`, { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Textes mis à jour', 'success');
+}
+
+// ---- CUSTOMIZATION ----
+async function loadCustomization() {
+  const res = await authFetch('/api/admin/customization');
+  if (!res?.ok) return;
+  const c = await res.json();
+
+  const urlEl = document.getElementById('bookingUrlText');
+  if (urlEl) { urlEl.textContent = c.public_url; urlEl.href = c.public_url; }
+  window._tenantBookingUrl = c.public_url;
+
+  const colorInput = document.getElementById('primaryColorInput');
+  const colorPreview = document.getElementById('colorPreview');
+  if (colorInput) { colorInput.value = c.primary_color || '#e2b04a'; }
+  if (colorPreview) colorPreview.style.background = c.primary_color || '#e2b04a';
+
+  const fields = { custHeroTag: c.hero_tag, custHeroTitle: c.hero_title, custHeroSubtitle: c.hero_subtitle, custSalonName: c.name, custSalonPhone: c.phone, custSalonAddress: c.address };
+  Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
+
+  renderImageZone('logoPreviewWrap', c.logo_url, 'logo');
+  renderImageZone('bannerPreviewWrap', c.banner_url, 'banner');
+  renderImageZone('heroPhotoPreviewWrap', c.hero_photo_url, 'hero-photo');
+}
+
+function renderImageZone(wrapperId, url, type) {
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  if (url) {
+    wrap.innerHTML = `<img src="${url}" class="custom-image-preview" alt=""><button class="btn btn-sm btn-danger" style="margin:0.5rem" onclick="deleteCustomImage('${type}')"><i class="fas fa-trash"></i> Supprimer</button>`;
+  } else {
+    wrap.innerHTML = `<div class="custom-image-placeholder" onclick="document.getElementById('${type}Input').click()"><i class="fas fa-image"></i><span>Cliquer pour uploader</span></div>`;
+  }
+}
+
+async function uploadCustomImage(type, input) {
+  if (!input?.files[0]) return;
+  const formData = new FormData();
+  formData.append('image', input.files[0]);
+  const res = await authFetch(`/api/admin/customization/${type}`, { method: 'POST', body: formData });
+  if (res?.ok) { showToast('Image mise à jour', 'success'); loadCustomization(); }
+  else showToast('Erreur upload', 'error');
+  input.value = '';
+}
+
+async function deleteCustomImage(type) {
+  if (!confirm('Supprimer cette image ?')) return;
+  const res = await authFetch(`/api/admin/customization/${type}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Image supprimée', 'success'); loadCustomization(); }
+}
+
+async function saveCustomizationTexts() {
+  const body = {
+    primary_color: document.getElementById('primaryColorInput')?.value,
+    hero_tag: document.getElementById('custHeroTag')?.value,
+    hero_title: document.getElementById('custHeroTitle')?.value,
+    hero_subtitle: document.getElementById('custHeroSubtitle')?.value,
+    name: document.getElementById('custSalonName')?.value,
+    phone: document.getElementById('custSalonPhone')?.value,
+    address: document.getElementById('custSalonAddress')?.value
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Personnalisation sauvegardée', 'success');
+}
+
+function copyBookingUrl() {
+  const url = window._tenantBookingUrl || document.getElementById('bookingUrlText')?.textContent;
+  if (url) navigator.clipboard.writeText(url).then(() => showToast('URL copiée !', 'success'));
+}
+
+function openTeamModal() {
+  document.getElementById('teamForm')?.reset();
+  openModal('teamModal');
+}
+
+// ---- TEAM ----
+async function loadTeam() {
+  const res = await authFetch('/api/admin/team');
+  if (!res?.ok) return;
+  const members = await res.json();
+  const tbody = document.getElementById('teamBody');
+  if (!tbody) return;
+  tbody.innerHTML = members.map(m => `
+    <tr>
+      <td>${m.name}</td>
+      <td>${m.email}</td>
+      <td><span class="role-badge role-${m.role}">${m.role}</span></td>
+      <td>${m.active ? '<span class="status-badge status-confirmed">Actif</span>' : '<span class="status-badge status-cancelled">Inactif</span>'}</td>
+      <td class="actions-cell">
+        ${m.role !== 'owner' ? `<button class="btn btn-sm btn-danger" onclick="removeTeamMember(${m.id})"><i class="fas fa-user-times"></i></button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function saveTeamMember() {
+  const body = {
+    name: document.getElementById('teamMemberName')?.value,
+    email: document.getElementById('teamMemberEmail')?.value,
+    password: document.getElementById('teamMemberPassword')?.value,
+    role: document.getElementById('teamMemberRole')?.value || 'admin'
+  };
+  const res = await authFetch('/api/admin/team', { method: 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) { showToast('Membre ajouté', 'success'); closeAllModals(); loadTeam(); }
+  else showToast(data.error || 'Erreur', 'error');
+}
+
+async function removeTeamMember(id) {
+  if (!confirm('Désactiver ce membre ?')) return;
+  const res = await authFetch(`/api/admin/team/${id}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Membre désactivé', 'success'); loadTeam(); }
+}
+
+// ---- BILLING ----
+async function loadBilling() {
+  const res = await authFetch('/api/admin/billing');
+  if (!res?.ok) return;
+  const b = await res.json();
+  const el = document.getElementById('billingContent');
+  if (!el) return;
+  const daysInfo = b.plan_status === 'trialing'
+    ? `<span style="color:var(--blue)"><i class="fas fa-clock"></i> ${b.days_left_trial} jours d'essai restants</span>`
+    : b.current_period_end ? `<span>Renouvellement le ${b.current_period_end}</span>` : '';
+  el.innerHTML = `
+    <div class="billing-plan-card">
+      <div class="billing-current">
+        <span class="billing-plan-name">${(b.plan||'').toUpperCase()}</span>
+        <span class="plan-badge ${b.plan_status}">${b.plan_status}</span>
+        ${daysInfo}
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="openStripePortal()"><i class="fas fa-external-link-alt"></i> Gérer l'abonnement</button>
+        <a href="/pricing" target="_blank" class="btn btn-outline"><i class="fas fa-arrow-up"></i> Changer de plan</a>
+      </div>
+    </div>`;
+}
+
+async function openStripePortal() {
+  const res = await authFetch('/api/admin/billing/portal', { method: 'POST', body: JSON.stringify({}) });
+  if (res?.ok) { const { url } = await res.json(); if (url) window.location.href = url; }
+  else showToast('Portail Stripe non configuré', 'warning');
+}
+
+function showTrialBanner(daysLeft) {
+  if (document.getElementById('trialBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'trialBanner';
+  banner.className = 'banner-trial';
+  banner.innerHTML = `<i class="fas fa-clock"></i> Votre essai gratuit se termine dans <strong>${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong>. <a href="/pricing" style="color:inherit;font-weight:600;text-decoration:underline">Choisir un plan</a>`;
+  document.getElementById('adminMain')?.prepend(banner);
+}
+
+function showPaymentFailedBanner() {
+  if (document.getElementById('paymentBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'paymentBanner';
+  banner.className = 'banner-warning';
+  banner.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Paiement échoué — veuillez mettre à jour votre moyen de paiement. <button class="btn btn-sm btn-danger" onclick="openStripePortal()" style="margin-left:0.5rem">Mettre à jour</button>`;
+  document.getElementById('adminMain')?.prepend(banner);
 }

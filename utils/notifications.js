@@ -2,20 +2,21 @@ require('dotenv').config();
 const nodemailer = require('nodemailer');
 
 // ---- TWILIO SMS ----
-function createTwilioClient() {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
+function createTwilioClient(tenantConfig) {
+  // Priorité aux credentials du tenant, sinon fallback plateforme
+  const sid = tenantConfig?.twilio_sid || process.env.TWILIO_ACCOUNT_SID;
+  const token = tenantConfig?.twilio_token || process.env.TWILIO_AUTH_TOKEN;
   if (!sid || !token || sid.startsWith('AC') === false || sid === 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx') return null;
   try { return require('twilio')(sid, token); } catch { return null; }
 }
 
-async function sendSMS(to, message) {
-  const client = createTwilioClient();
+async function sendSMS(to, message, tenantConfig) {
+  const client = createTwilioClient(tenantConfig);
   if (!client) {
     console.log(`[SMS simulé] → ${to}: ${message}`);
     return { simulated: true };
   }
-  const from = process.env.TWILIO_PHONE_NUMBER;
+  const from = tenantConfig?.twilio_phone || process.env.TWILIO_PHONE_NUMBER;
   const phone = to.replace(/[\s\-\(\)]/g, '');
   const e164 = phone.startsWith('+') ? phone : `+1${phone}`;
   const result = await client.messages.create({ body: message, from, to: e164 });
@@ -24,9 +25,10 @@ async function sendSMS(to, message) {
 }
 
 // ---- NODEMAILER EMAIL ----
-function createMailTransporter() {
-  const user = process.env.EMAIL_USER;
-  const pass = process.env.EMAIL_PASS;
+function createMailTransporter(tenantConfig) {
+  // Priorité aux credentials du tenant (smtp_user/smtp_pass), sinon plateforme
+  const user = tenantConfig?.smtp_user || process.env.EMAIL_USER;
+  const pass = tenantConfig?.smtp_pass || process.env.EMAIL_PASS;
   if (!user || !pass) return null;
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
@@ -36,14 +38,16 @@ function createMailTransporter() {
   });
 }
 
-async function sendEmail(to, subject, htmlBody) {
-  const transporter = createMailTransporter();
+async function sendEmail(to, subject, htmlBody, tenantConfig) {
+  const transporter = createMailTransporter(tenantConfig);
   if (!transporter) {
     console.log(`[Email simulé] → ${to}: ${subject}`);
     return { simulated: true };
   }
+  const shopName = tenantConfig?.name || process.env.SHOP_NAME || 'Barbier';
+  const fromEmail = tenantConfig?.smtp_user || process.env.EMAIL_USER || '';
   const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM || 'Fenix Barbier <noreply@fenixbarbier.ca>',
+    from: `${shopName} <${fromEmail}>`,
     to,
     subject,
     html: htmlBody,
@@ -53,10 +57,10 @@ async function sendEmail(to, subject, htmlBody) {
 }
 
 // ---- TEMPLATES ----
-function confirmationEmailHTML(data) {
-  const shop = process.env.SHOP_NAME || 'Fenix Barbier';
-  const address = process.env.SHOP_ADDRESS || '155 Rue Des Chênes O, Quebec Qc G1L 1K6';
-  const phone = process.env.SHOP_PHONE || '418-555-0100';
+function confirmationEmailHTML(data, shopName, shopPhone, shopAddress) {
+  const name = shopName || process.env.SHOP_NAME || 'Fenix Barbier';
+  const address = shopAddress || process.env.SHOP_ADDRESS || '155 Rue Des Chênes O, Quebec Qc G1L 1K6';
+  const phone = shopPhone || process.env.SHOP_PHONE || '418-555-0100';
   return `
 <!DOCTYPE html>
 <html lang="fr">
@@ -64,7 +68,7 @@ function confirmationEmailHTML(data) {
 <body style="margin:0;padding:0;background:#f8fafc;font-family:Inter,Arial,sans-serif">
   <div style="max-width:560px;margin:32px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
     <div style="background:#1a1a2e;padding:32px 32px 24px;text-align:center">
-      <h1 style="color:#e2b04a;margin:0;font-size:24px;letter-spacing:1px">✂ ${shop}</h1>
+      <h1 style="color:#e2b04a;margin:0;font-size:24px;letter-spacing:1px">✂ ${name}</h1>
       <p style="color:rgba(255,255,255,0.6);margin:8px 0 0;font-size:14px">Confirmation de rendez-vous</p>
     </div>
     <div style="padding:32px">
@@ -93,14 +97,14 @@ function confirmationEmailHTML(data) {
 </html>`;
 }
 
-function reminderSMSText(data) {
-  const shop = process.env.SHOP_NAME || 'Fenix Barbier';
-  const phone = process.env.SHOP_PHONE || '418-555-0100';
-  return `[${shop}] Rappel: votre RDV "${data.service}" est demain ${data.date} à ${data.time} avec ${data.barber}. Pour annuler: ${phone}`;
+function reminderSMSText(data, shopName, shopPhone) {
+  const name = shopName || process.env.SHOP_NAME || 'Fenix Barbier';
+  const phone = shopPhone || process.env.SHOP_PHONE || '418-555-0100';
+  return `[${name}] Rappel: votre RDV "${data.service}" est demain ${data.date} à ${data.time} avec ${data.barber}. Pour annuler: ${phone}`;
 }
 
-function reminderEmailHTML(data) {
-  return confirmationEmailHTML({ ...data, isReminder: true });
+function reminderEmailHTML(data, shopName, shopPhone, shopAddress) {
+  return confirmationEmailHTML({ ...data, isReminder: true }, shopName, shopPhone, shopAddress);
 }
 
 module.exports = { sendSMS, sendEmail, confirmationEmailHTML, reminderSMSText, reminderEmailHTML };

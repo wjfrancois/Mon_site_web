@@ -4,8 +4,8 @@ const db = require('../database');
 
 router.get('/transactions', (req, res) => {
   const { month, type } = req.query;
-  let query = 'SELECT * FROM transactions WHERE 1=1';
-  const params = [];
+  let query = 'SELECT * FROM transactions WHERE tenant_id = ?';
+  const params = [req.tenantId];
   if (month) { query += ' AND strftime("%Y-%m", date) = ?'; params.push(month); }
   if (type) { query += ' AND type = ?'; params.push(type); }
   query += ' ORDER BY date DESC, created_at DESC';
@@ -17,12 +17,12 @@ router.post('/transactions', (req, res) => {
   if (!type || !category || !description || amount === undefined || !date) {
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
   }
-  const result = db.prepare('INSERT INTO transactions (type, category, description, amount, date) VALUES (?, ?, ?, ?, ?)').run(type, category, description, amount, date);
+  const result = db.prepare('INSERT INTO transactions (type, category, description, amount, date, tenant_id) VALUES (?, ?, ?, ?, ?, ?)').run(type, category, description, amount, date, req.tenantId);
   res.json({ id: result.lastInsertRowid });
 });
 
 router.delete('/transactions/:id', (req, res) => {
-  db.prepare('DELETE FROM transactions WHERE id = ?').run(req.params.id);
+  db.prepare('DELETE FROM transactions WHERE id = ? AND tenant_id = ?').run(req.params.id, req.tenantId);
   res.json({ message: 'Transaction supprimée' });
 });
 
@@ -42,20 +42,20 @@ router.get('/summary', (req, res) => {
     dateFilter = `AND strftime('%Y', date) = '${now.getFullYear()}'`;
   }
 
-  const income = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'income' ${dateFilter}`).get();
-  const expense = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'expense' ${dateFilter}`).get();
+  const income = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'income' AND tenant_id = ? ${dateFilter}`).get(req.tenantId);
+  const expense = db.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE type = 'expense' AND tenant_id = ? ${dateFilter}`).get(req.tenantId);
   const byCategory = db.prepare(`
     SELECT type, category, SUM(amount) as total, COUNT(*) as count
-    FROM transactions WHERE 1=1 ${dateFilter}
+    FROM transactions WHERE tenant_id = ? ${dateFilter}
     GROUP BY type, category ORDER BY total DESC
-  `).all();
+  `).all(req.tenantId);
 
   const dailyRevenue = db.prepare(`
     SELECT date, SUM(CASE WHEN type='income' THEN amount ELSE 0 END) as income,
            SUM(CASE WHEN type='expense' THEN amount ELSE 0 END) as expense
-    FROM transactions WHERE 1=1 ${dateFilter}
+    FROM transactions WHERE tenant_id = ? ${dateFilter}
     GROUP BY date ORDER BY date ASC
-  `).all();
+  `).all(req.tenantId);
 
   res.json({
     total_income: income.total,

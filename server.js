@@ -5,89 +5,111 @@ const path = require('path');
 const session = require('express-session');
 const cron = require('node-cron');
 const db = require('./database');
-const { sendSMS, sendEmail, reminderSMSText, reminderEmailHTML } = require('./utils/notifications');
-const { router: authRouter, requireAuth } = require('./routes/auth');
+const { sendSMS, sendEmail, reminderEmailHTML } = require('./utils/notifications');
+const { requireAuth } = require('./middleware/tenantAuth');
+const { guardSmsQuota, incrementSmsUsage } = require('./middleware/planGuard');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const VIEWS = path.join(__dirname, 'views');
 
 app.use(cors());
-app.use(express.json());
-
-// ⚠️  Session AVANT tout le reste (middleware statique inclus)
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fenix_barbier_fallback_secret',
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    secure: false,
-    httpOnly: true,
-    maxAge: 8 * 60 * 60 * 1000 // 8 heures
-  }
+  cookie: { secure: false, httpOnly: true, maxAge: 8 * 60 * 60 * 1000 }
 }));
 
-// Bloquer toute tentative d'accès direct aux fichiers admin par URL
+// Stripe webhook doit recevoir le body brut AVANT express.json
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use(express.json());
+
+// Bloquer accès direct aux fichiers HTML admin
 app.use((req, res, next) => {
-  const blocked = ['/admin.html', '/admin.htm'];
-  if (blocked.includes(req.path.toLowerCase())) {
-    return res.redirect(301, '/admin');
-  }
+  const blocked = ['/admin.html', '/admin.htm', '/login.html'];
+  if (blocked.includes(req.path.toLowerCase())) return res.redirect(301, '/admin');
   next();
 });
 
-// Fichiers statiques publics (CSS, JS client, images)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Auth routes (login/logout — publiques)
-app.use('/', authRouter);
+// === ROUTES PUBLIQUES ===
+app.use('/', require('./routes/auth'));
+app.use('/api/book', require('./routes/booking'));
+app.use('/api/onboarding', require('./routes/onboarding'));
+app.use('/api/stripe', require('./routes/stripe'));
 
-// Routes API publiques (réservation client)
-app.use('/api/appointments', require('./routes/appointments'));
-app.use('/api/services', require('./routes/services'));
-app.use('/api/barbers', require('./routes/barbers'));
-
-// Route settings publique (lecture seule pour le site client)
-app.get('/api/public/settings', (req, res) => {
-  const rows = db.prepare('SELECT key, value FROM site_settings').all();
-  const settings = {};
-  rows.forEach(r => { settings[r.key] = r.value; });
-  res.json(settings);
+// Services et barbers en GET public (pour index.html legacy)
+app.get('/api/services', (req, res, next) => {
+  const rows = db.prepare('SELECT * FROM services WHERE tenant_id = 1 AND active = 1 ORDER BY name ASC').all();
+  res.json(rows);
+});
+app.get('/api/barbers', (req, res, next) => {
+  const rows = db.prepare('SELECT id, name, color FROM barbers WHERE tenant_id = 1 AND active = 1 ORDER BY name ASC').all();
+  res.json(rows);
 });
 
-// Routes API protégées (admin seulement)
+// Slots publics (legacy pour index.html)
+app.use('/api/appointments', require('./routes/appointments'));
+
+// === ROUTES API ADMIN (JWT requis) ===
 app.use('/api/clients', requireAuth, require('./routes/clients'));
+app.use('/api/barbers', requireAuth, require('./routes/barbers'));
+app.use('/api/services', requireAuth, require('./routes/services'));
 app.use('/api/accounting', requireAuth, require('./routes/accounting'));
 app.use('/api/stats', requireAuth, require('./routes/stats'));
 app.use('/api/reminders', requireAuth, require('./routes/reminders'));
-app.use('/api/settings', requireAuth, require('./routes/settings'));
+app.use('/api/admin/customization', requireAuth, require('./routes/customization'));
+app.use('/api/admin/team', requireAuth, require('./routes/team'));
+app.use('/api/admin/billing', requireAuth, require('./routes/stripe'));
 
-// Pages protégées — servies depuis views/ (hors dossier public)
-app.get('/admin', requireAuth, (req, res) => res.sendFile(path.join(VIEWS, 'admin.html')));
-app.get('/login', (req, res) => {
-  if (req.session?.authenticated) return res.redirect('/admin');
-  res.sendFile(path.join(VIEWS, 'login.html'));
+// GET /api/admin/me — infos utilisateur + tenant + plan
+app.get('/api/admin/me', requireAuth, (req, res) => {
+  const { getPlan } = require('./utils/plans');
+  const plan = getPlan(req.tenant.plan);
+  const daysLeft = req.tenant.trial_ends_at
+    ? Math.max(0, Math.ceil((new Date(req.tenant.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))
+    : 0;
+  const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.userId);
+  res.json({
+    user: user || { id: req.user.userId, name: '', email: '', role: req.user.role },
+    tenant: { ...req.tenant, days_left_trial: daysLeft },
+    plan_limits: plan,
+    booking_url: `${process.env.APP_URL || 'http://localhost:3000'}/book/${req.tenant.slug}`
+  });
 });
 
-// Cron: envoi des rappels dus toutes les 5 minutes
+// === PAGES HTML ===
+app.get('/admin', requireAuth, (req, res) => res.sendFile(path.join(VIEWS, 'admin.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(VIEWS, 'login.html')));
+app.get('/signup', (req, res) => res.sendFile(path.join(VIEWS, 'onboarding.html')));
+app.get('/pricing', (req, res) => res.sendFile(path.join(VIEWS, 'pricing.html')));
+app.get('/book/:slug', (req, res) => res.sendFile(path.join(VIEWS, 'booking.html')));
+
+// === CRON : Rappels SMS/Email toutes les 5 minutes ===
 cron.schedule('*/5 * * * *', async () => {
   const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
   const due = db.prepare(`
     SELECT r.*, c.phone, c.email, c.name as client_name,
            a.date as appt_date, a.time as appt_time,
-           s.name as service_name, b.name as barber_name
+           s.name as service_name, b.name as barber_name,
+           t.name as tenant_name, t.phone as tenant_phone, t.id as tid, t.plan
     FROM reminders r
     JOIN clients c ON r.client_id = c.id
+    JOIN tenants t ON r.tenant_id = t.id
     LEFT JOIN appointments a ON r.appointment_id = a.id
     LEFT JOIN services s ON a.service_id = s.id
     LEFT JOIN barbers b ON a.barber_id = b.id
     WHERE r.status = 'pending' AND r.scheduled_at <= ?
+      AND t.plan_status IN ('active', 'trialing')
   `).all(now);
 
   for (const r of due) {
     try {
-      if (r.channel === 'sms' || !r.channel) {
+      if ((r.channel === 'sms' || !r.channel) && guardSmsQuota(r.tid)) {
         await sendSMS(r.phone, r.message);
+        incrementSmsUsage(r.tid);
       } else if (r.channel === 'email' && r.email) {
         const html = reminderEmailHTML({
           clientName: r.client_name,
@@ -97,7 +119,7 @@ cron.schedule('*/5 * * * *', async () => {
           time: r.appt_time || '',
           price: ''
         });
-        await sendEmail(r.email, `Rappel – ${process.env.SHOP_NAME || 'Fenix Barbier'}`, html);
+        await sendEmail(r.email, `Rappel – ${r.tenant_name || 'Barbershop'}`, html);
       }
       db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('sent', now, r.id);
       if (r.appointment_id) db.prepare('UPDATE appointments SET reminder_sent = 1 WHERE id = ?').run(r.appointment_id);
@@ -107,13 +129,12 @@ cron.schedule('*/5 * * * *', async () => {
   }
 });
 
-// Page client (accès public)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/{*path}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 app.listen(PORT, () => {
-  console.log(`✂  Fenix Barbier – App démarrée sur http://localhost:${PORT}`);
-  console.log(`🔒 Admin: http://localhost:${PORT}/admin  (mdp: ${process.env.ADMIN_PASSWORD || 'Fenix2024!'})`);
+  console.log(`✂  BarberSaaS – App démarrée sur http://localhost:${PORT}`);
+  console.log(`🔒 Admin: http://localhost:${PORT}/admin`);
 });
 
 module.exports = app;

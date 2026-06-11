@@ -1,0 +1,426 @@
+/* ============================================
+   BOOKING PAGE – public/js/booking.js
+   ============================================ */
+
+const slug = window.location.pathname.split('/')[2] || '';
+const API_BASE = `/api/book/${slug}`;
+
+// ---- STATE ----
+const state = {
+  services: [],
+  barbers: [],
+  selectedService: null,
+  selectedBarber: null,
+  selectedDate: null,
+  selectedTime: null,
+  currentYear: new Date().getFullYear(),
+  currentMonth: new Date().getMonth()
+};
+
+// ---- INIT ----
+document.addEventListener('DOMContentLoaded', () => {
+  loadTenantInfo();
+  loadServices();
+  loadBarbers();
+  initCalendar();
+
+  document.getElementById('bookingForm').addEventListener('submit', submitBooking);
+});
+
+// ---- TENANT INFO ----
+async function loadTenantInfo() {
+  try {
+    const res = await fetch(`${API_BASE}/info`);
+    if (!res.ok) return;
+    const info = await res.json();
+
+    // Apply tenant accent color
+    document.documentElement.style.setProperty('--tenant-accent', info.primary_color || '#e2b04a');
+
+    // Page title
+    document.title = `${info.name} – Réservation en ligne`;
+
+    // Header
+    const salonNameEl = document.getElementById('salonName');
+    if (salonNameEl) salonNameEl.textContent = info.name || 'Salon';
+
+    if (info.logo_url) {
+      const logoEl = document.getElementById('salonLogo');
+      if (logoEl) {
+        logoEl.src = info.logo_url;
+        logoEl.style.display = 'block';
+      }
+    }
+
+    // Hero background
+    const bgUrl = info.banner_url || info.hero_photo_url;
+    if (bgUrl) {
+      const heroBg = document.getElementById('heroBg');
+      if (heroBg) heroBg.style.backgroundImage = `url('${bgUrl}')`;
+    }
+
+    // Hero texts
+    if (info.hero_tag) {
+      const tagEl = document.getElementById('heroTag');
+      if (tagEl) { tagEl.textContent = info.hero_tag; tagEl.style.display = 'inline-block'; }
+    }
+    if (info.hero_title) {
+      const titleEl = document.getElementById('heroTitle');
+      if (titleEl) titleEl.innerHTML = info.hero_title.replace(/(Fenix|Barbier|salon)/gi, '<span>$&</span>');
+    }
+    if (info.hero_subtitle) {
+      const subtitleEl = document.getElementById('heroSubtitle');
+      if (subtitleEl) subtitleEl.textContent = info.hero_subtitle;
+    }
+
+    // Footer contact info
+    const contactEl = document.getElementById('salonContactInfo');
+    if (contactEl) {
+      let parts = [];
+      if (info.phone) parts.push(`<span><i class="fas fa-phone" style="margin-right:4px"></i>${info.phone}</span>`);
+      if (info.address) parts.push(`<span><i class="fas fa-map-marker-alt" style="margin-right:4px"></i>${info.address}</span>`);
+      contactEl.innerHTML = parts.join('');
+    }
+  } catch (e) {
+    console.error('loadTenantInfo error:', e);
+  }
+}
+
+// ---- SERVICES ----
+async function loadServices() {
+  try {
+    const res = await fetch(`${API_BASE}/services`);
+    if (!res.ok) return;
+    state.services = await res.json();
+    renderServiceOptions();
+  } catch (e) {
+    console.error('loadServices error:', e);
+    document.getElementById('serviceGrid').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Impossible de charger les services.</p></div>';
+  }
+}
+
+function renderServiceOptions() {
+  const grid = document.getElementById('serviceGrid');
+  if (!grid) return;
+  if (!state.services.length) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-scissors"></i><p>Aucun service disponible.</p></div>';
+    return;
+  }
+  grid.innerHTML = state.services.map(s => `
+    <div class="service-card ${state.selectedService === s.id ? 'selected' : ''}" onclick="selectService(${s.id})">
+      <div class="service-name">${s.name}</div>
+      <div class="service-meta">
+        <span><i class="fas fa-clock"></i> ${s.duration} min</span>
+        <span class="service-price">${parseFloat(s.price).toFixed(2)} $</span>
+      </div>
+      ${s.description ? `<div class="service-desc" style="font-size:0.8rem;color:var(--text-light);margin-top:0.4rem">${s.description}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function selectService(id) {
+  state.selectedService = id;
+  renderServiceOptions();
+  const btn = document.getElementById('btn-step1-next');
+  if (btn) btn.disabled = false;
+}
+
+// ---- BARBERS ----
+async function loadBarbers() {
+  try {
+    const res = await fetch(`${API_BASE}/barbers`);
+    if (!res.ok) return;
+    state.barbers = await res.json();
+    renderBarberOptions();
+  } catch (e) {
+    console.error('loadBarbers error:', e);
+  }
+}
+
+function renderBarberOptions() {
+  const grid = document.getElementById('barberGrid');
+  if (!grid) return;
+  if (!state.barbers.length) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-user-slash"></i><p>Aucun barbier disponible.</p></div>';
+    return;
+  }
+
+  // Prepend "Any barber" option
+  const anySelected = state.selectedBarber === 'any';
+  let html = `
+    <div class="barber-card ${anySelected ? 'selected' : ''}" onclick="selectBarber('any')">
+      <div class="barber-avatar" style="background:#64748b"><i class="fas fa-random"></i></div>
+      <div class="barber-name">Peu importe</div>
+    </div>
+  `;
+  html += state.barbers.map(b => `
+    <div class="barber-card ${state.selectedBarber === b.id ? 'selected' : ''}" onclick="selectBarber(${b.id})">
+      <div class="barber-avatar" style="background:${b.color || '#1a1a2e'}">${b.name.charAt(0).toUpperCase()}</div>
+      <div class="barber-name">${b.name}</div>
+    </div>
+  `).join('');
+  grid.innerHTML = html;
+}
+
+function selectBarber(id) {
+  state.selectedBarber = id;
+  renderBarberOptions();
+  const btn = document.getElementById('btn-step2-next');
+  if (btn) btn.disabled = false;
+}
+
+// ---- CALENDAR ----
+function initCalendar() {
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const label = document.getElementById('calMonthLabel');
+  const grid = document.getElementById('calendarGrid');
+  if (!label || !grid) return;
+
+  const months = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  label.textContent = `${months[state.currentMonth]} ${state.currentYear}`;
+
+  const days = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  let html = days.map(d => `<div class="cal-day-header">${d}</div>`).join('');
+
+  const firstDay = new Date(state.currentYear, state.currentMonth, 1).getDay();
+  const daysInMonth = new Date(state.currentYear, state.currentMonth + 1, 0).getDate();
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  for (let i = 0; i < firstDay; i++) {
+    html += '<div class="calendar-day empty"></div>';
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateObj = new Date(state.currentYear, state.currentMonth, d);
+    const dateStr = `${state.currentYear}-${String(state.currentMonth + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isPast = dateObj < today;
+    const isSelected = state.selectedDate === dateStr;
+    html += `<div class="calendar-day${isPast ? ' past disabled' : ''}${isSelected ? ' selected' : ''}"
+      ${!isPast ? `onclick="selectDate('${dateStr}')"` : ''}>
+      ${d}
+    </div>`;
+  }
+
+  grid.innerHTML = html;
+}
+
+function prevMonth() {
+  if (state.currentMonth === 0) { state.currentMonth = 11; state.currentYear--; }
+  else state.currentMonth--;
+  renderCalendar();
+}
+
+function nextMonth() {
+  if (state.currentMonth === 11) { state.currentMonth = 0; state.currentYear++; }
+  else state.currentMonth++;
+  renderCalendar();
+}
+
+async function selectDate(dateStr) {
+  state.selectedDate = dateStr;
+  state.selectedTime = null;
+  renderCalendar();
+
+  const label = document.getElementById('selectedDateLabel');
+  if (label) label.textContent = `Créneaux disponibles — ${formatDateFr(dateStr)}`;
+
+  const slotsEl = document.getElementById('timeSlots');
+  if (slotsEl) slotsEl.innerHTML = '<div class="empty-state"><div class="spinner" style="width:24px;height:24px;border-width:2px;margin:0 auto"></div><p>Chargement...</p></div>';
+
+  const btn = document.getElementById('btn-step3-next');
+  if (btn) btn.disabled = true;
+
+  try {
+    const params = new URLSearchParams({ date: dateStr });
+    if (state.selectedBarber && state.selectedBarber !== 'any') params.set('barber_id', state.selectedBarber);
+    if (state.selectedService) params.set('service_id', state.selectedService);
+
+    const res = await fetch(`${API_BASE}/slots?${params}`);
+    const data = await res.json();
+    renderTimeSlots(data);
+  } catch (e) {
+    if (slotsEl) slotsEl.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Erreur de chargement.</p></div>';
+  }
+}
+
+function renderTimeSlots(data) {
+  const el = document.getElementById('timeSlots');
+  if (!el) return;
+
+  if (data.closed) {
+    el.innerHTML = '<div class="empty-state"><i class="fas fa-door-closed"></i><p>Salon fermé ce jour.</p></div>';
+    return;
+  }
+  if (!data.slots || !data.slots.length) {
+    el.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-times"></i><p>Aucun créneau disponible.</p></div>';
+    return;
+  }
+
+  el.innerHTML = data.slots.map(slot => `
+    <button class="time-slot${state.selectedTime === slot ? ' selected' : ''}" onclick="selectSlot('${slot}')">
+      ${slot}
+    </button>
+  `).join('');
+}
+
+function selectSlot(time) {
+  state.selectedTime = time;
+  // Re-render slots to update selection
+  const slots = document.querySelectorAll('.time-slot');
+  slots.forEach(s => {
+    s.classList.toggle('selected', s.textContent.trim() === time);
+  });
+  const btn = document.getElementById('btn-step3-next');
+  if (btn) btn.disabled = false;
+}
+
+// ---- STEP NAVIGATION ----
+function goToStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const stepEl = document.getElementById(`wizard-step-${i}`);
+    if (stepEl) stepEl.classList.toggle('hidden', i !== n);
+    const indEl = document.getElementById(`step-ind-${i}`);
+    if (indEl) {
+      indEl.classList.remove('active', 'done');
+      if (i === n) indEl.classList.add('active');
+      else if (i < n) indEl.classList.add('done');
+    }
+    if (i < 4) {
+      const conn = document.getElementById(`conn-${i}`);
+      if (conn) conn.classList.toggle('done', i < n);
+    }
+  }
+  if (n === 4) renderBookingSummary();
+  // Scroll to booking section
+  document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---- BOOKING SUMMARY ----
+function renderBookingSummary() {
+  const service = state.services.find(s => s.id === state.selectedService);
+  const barber = state.selectedBarber === 'any' ? { name: 'Peu importe' } : state.barbers.find(b => b.id === state.selectedBarber);
+  const el = document.getElementById('bookingSummary');
+  if (!el) return;
+
+  el.innerHTML = `
+    <div class="summary-row"><span class="summary-label"><i class="fas fa-scissors"></i> Service</span><span class="summary-value">${service?.name || '—'} — ${service ? parseFloat(service.price).toFixed(2) + ' $' : ''}</span></div>
+    <div class="summary-row"><span class="summary-label"><i class="fas fa-user"></i> Barbier</span><span class="summary-value">${barber?.name || '—'}</span></div>
+    <div class="summary-row"><span class="summary-label"><i class="fas fa-calendar"></i> Date</span><span class="summary-value">${state.selectedDate ? formatDateFr(state.selectedDate) : '—'}</span></div>
+    <div class="summary-row"><span class="summary-label"><i class="fas fa-clock"></i> Heure</span><span class="summary-value">${state.selectedTime || '—'}</span></div>
+  `;
+}
+
+// ---- SUBMIT ----
+async function submitBooking(e) {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  const service = state.services.find(s => s.id === state.selectedService);
+  const barber = state.selectedBarber !== 'any' ? state.barbers.find(b => b.id === state.selectedBarber) : null;
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:18px;height:18px;border-width:2px;display:inline-block"></div> Confirmation...';
+
+  const body = {
+    service_id: state.selectedService,
+    barber_id: state.selectedBarber !== 'any' ? state.selectedBarber : null,
+    date: state.selectedDate,
+    time: state.selectedTime,
+    client_name: document.getElementById('clientName').value,
+    client_phone: document.getElementById('clientPhone').value,
+    client_email: document.getElementById('clientEmail').value,
+    notes: document.getElementById('clientNotes').value
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (res.ok) {
+      showConfirmation(data);
+    } else {
+      alert(data.error || 'Une erreur est survenue. Veuillez réessayer.');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-check"></i> Confirmer le rendez-vous';
+    }
+  } catch (err) {
+    alert('Erreur de connexion. Veuillez réessayer.');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-check"></i> Confirmer le rendez-vous';
+  }
+}
+
+function showConfirmation(data) {
+  const wizard = document.getElementById('bookingWizard');
+  const success = document.getElementById('successScreen');
+  const section = document.getElementById('booking-section');
+
+  if (wizard) wizard.style.display = 'none';
+  if (success) success.classList.remove('hidden');
+
+  const service = state.services.find(s => s.id === state.selectedService);
+  const barber = state.selectedBarber !== 'any' ? state.barbers.find(b => b.id === state.selectedBarber) : { name: 'Premier disponible' };
+
+  const confirmSummary = document.getElementById('confirmSummary');
+  if (confirmSummary) {
+    confirmSummary.innerHTML = `
+      <div class="summary-row"><span class="summary-label"><i class="fas fa-scissors"></i> Service</span><span class="summary-value">${service?.name || '—'}</span></div>
+      <div class="summary-row"><span class="summary-label"><i class="fas fa-user"></i> Barbier</span><span class="summary-value">${barber?.name || '—'}</span></div>
+      <div class="summary-row"><span class="summary-label"><i class="fas fa-calendar"></i> Date</span><span class="summary-value">${formatDateFr(state.selectedDate)}</span></div>
+      <div class="summary-row"><span class="summary-label"><i class="fas fa-clock"></i> Heure</span><span class="summary-value">${state.selectedTime}</span></div>
+    `;
+  }
+
+  const msgEl = document.getElementById('confirmationMsg');
+  if (msgEl && data.message) msgEl.textContent = data.message;
+
+  section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetBooking() {
+  state.selectedService = null;
+  state.selectedBarber = null;
+  state.selectedDate = null;
+  state.selectedTime = null;
+  state.currentYear = new Date().getFullYear();
+  state.currentMonth = new Date().getMonth();
+
+  const wizard = document.getElementById('bookingWizard');
+  const success = document.getElementById('successScreen');
+  if (wizard) wizard.style.display = '';
+  if (success) success.classList.add('hidden');
+
+  document.getElementById('bookingForm')?.reset();
+  renderServiceOptions();
+  renderBarberOptions();
+  renderCalendar();
+  const timeSlots = document.getElementById('timeSlots');
+  if (timeSlots) timeSlots.innerHTML = '';
+  const label = document.getElementById('selectedDateLabel');
+  if (label) label.textContent = 'Sélectionnez une date';
+
+  goToStep(1);
+
+  const btn1 = document.getElementById('btn-step1-next');
+  if (btn1) btn1.disabled = true;
+  const btn2 = document.getElementById('btn-step2-next');
+  if (btn2) btn2.disabled = true;
+  const btn3 = document.getElementById('btn-step3-next');
+  if (btn3) btn3.disabled = true;
+}
+
+// ---- UTILS ----
+function formatDateFr(str) {
+  if (!str) return '';
+  const [year, month, day] = str.split('-');
+  const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const days = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const d = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  return `${days[d.getDay()]} ${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+}
