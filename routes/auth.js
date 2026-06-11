@@ -26,7 +26,7 @@ router.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
 
-  const user = db.prepare('SELECT u.*, t.id as t_id FROM users u JOIN tenants t ON u.tenant_id = t.id WHERE u.email = ? AND u.active = 1').get(email);
+  const user = await db.prepare('SELECT u.*, t.id as t_id FROM users u JOIN tenants t ON u.tenant_id = t.id WHERE u.email = ? AND u.active = 1').get(email);
   if (!user) {
     await new Promise(r => setTimeout(r, 600));
     return res.status(401).json({ error: 'Identifiants incorrects' });
@@ -39,15 +39,15 @@ router.post('/api/auth/login', async (req, res) => {
   }
 
   // Reconstruire les objets séparés
-  const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(user.tenant_id);
+  const tenant = await db.prepare('SELECT * FROM tenants WHERE id = ?').get(user.tenant_id);
   const accessToken = makeAccessToken(user, tenant);
   const refreshRaw = makeRefreshToken();
   const refreshHash = crypto.createHash('sha256').update(refreshRaw).digest('hex');
   const expiresAt = new Date(Date.now() + 30*24*60*60*1000).toISOString();
 
   // Supprimer anciens tokens de cet user
-  db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(user.id);
-  db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)').run(user.id, refreshHash, expiresAt);
+  await db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(user.id);
+  await db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)').run(user.id, refreshHash, expiresAt);
 
   res.json({
     accessToken,
@@ -58,29 +58,29 @@ router.post('/api/auth/login', async (req, res) => {
 });
 
 // POST /api/auth/refresh
-router.post('/api/auth/refresh', (req, res) => {
+router.post('/api/auth/refresh', async (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) return res.status(400).json({ error: 'Refresh token requis' });
 
   const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-  const stored = db.prepare('SELECT rt.*, u.tenant_id FROM refresh_tokens rt JOIN users u ON rt.user_id = u.id WHERE rt.token_hash = ?').get(hash);
+  const stored = await db.prepare('SELECT rt.*, u.tenant_id FROM refresh_tokens rt JOIN users u ON rt.user_id = u.id WHERE rt.token_hash = ?').get(hash);
 
   if (!stored || new Date(stored.expires_at) < new Date()) {
     return res.status(401).json({ error: 'Refresh token invalide ou expiré' });
   }
 
-  const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(stored.tenant_id);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(stored.user_id);
+  const tenant = await db.prepare('SELECT * FROM tenants WHERE id = ?').get(stored.tenant_id);
+  const user = await db.prepare('SELECT * FROM users WHERE id = ?').get(stored.user_id);
   const accessToken = makeAccessToken(user, tenant);
   res.json({ accessToken });
 });
 
 // POST /api/auth/logout
-router.post('/api/auth/logout', (req, res) => {
+router.post('/api/auth/logout', async (req, res) => {
   const { refreshToken } = req.body;
   if (refreshToken) {
     const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    db.prepare('DELETE FROM refresh_tokens WHERE token_hash = ?').run(hash);
+    await db.prepare('DELETE FROM refresh_tokens WHERE token_hash = ?').run(hash);
   }
   res.json({ success: true });
 });
@@ -91,17 +91,17 @@ router.post('/login', async (req, res) => {
   // Support both old (password only) and new (email+password) forms
   const emailToUse = email || (process.env.EMAIL_USER || 'admin@fenixbarbier.ca');
   try {
-    const user = db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(emailToUse);
+    const user = await db.prepare('SELECT * FROM users WHERE email = ? AND active = 1').get(emailToUse);
     if (!user) return res.status(401).json({ error: 'Identifiants incorrects' });
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Mot de passe incorrect' });
-    const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(user.tenant_id);
+    const tenant = await db.prepare('SELECT * FROM tenants WHERE id = ?').get(user.tenant_id);
     const accessToken = makeAccessToken(user, tenant);
     const refreshRaw = makeRefreshToken();
     const refreshHash = crypto.createHash('sha256').update(refreshRaw).digest('hex');
     const expiresAt = new Date(Date.now() + 30*24*60*60*1000).toISOString();
-    db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(user.id);
-    db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)').run(user.id, refreshHash, expiresAt);
+    await db.prepare('DELETE FROM refresh_tokens WHERE user_id = ?').run(user.id);
+    await db.prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)').run(user.id, refreshHash, expiresAt);
     res.json({ success: true, accessToken, refreshToken: refreshRaw, tenant: { slug: tenant.slug } });
   } catch(e) {
     res.status(500).json({ error: 'Erreur serveur' });

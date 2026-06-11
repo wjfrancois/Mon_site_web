@@ -57,13 +57,13 @@ app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
 
 // GET /api/admin/me — infos utilisateur + tenant + plan
-app.get('/api/admin/me', requireAuth, (req, res) => {
+app.get('/api/admin/me', requireAuth, async (req, res) => {
   const { getPlan } = require('./utils/plans');
   const plan = getPlan(req.tenant.plan);
   const daysLeft = req.tenant.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(req.tenant.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24)))
     : 0;
-  const user = db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.userId);
+  const user = await db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.userId);
   res.json({
     user: user || { id: req.user.userId, name: '', email: '', role: req.user.role },
     tenant: { ...req.tenant, days_left_trial: daysLeft },
@@ -83,7 +83,7 @@ app.get('/book/:slug', (req, res) => res.sendFile(path.join(VIEWS, 'booking.html
 // === CRON : Rappels SMS/Email toutes les 5 minutes ===
 cron.schedule('*/5 * * * *', async () => {
   const now = new Date().toISOString().slice(0, 16).replace('T', ' ');
-  const due = db.prepare(`
+  const due = await db.prepare(`
     SELECT r.*, c.phone, c.email, c.name as client_name,
            a.date as appt_date, a.time as appt_time,
            s.name as service_name, b.name as barber_name,
@@ -100,9 +100,9 @@ cron.schedule('*/5 * * * *', async () => {
 
   for (const r of due) {
     try {
-      if ((r.channel === 'sms' || !r.channel) && guardSmsQuota(r.tid)) {
+      if ((r.channel === 'sms' || !r.channel) && await guardSmsQuota(r.tid)) {
         await sendSMS(r.phone, r.message);
-        incrementSmsUsage(r.tid);
+        await incrementSmsUsage(r.tid);
       } else if (r.channel === 'email' && r.email) {
         const html = reminderEmailHTML({
           clientName: r.client_name,
@@ -114,8 +114,8 @@ cron.schedule('*/5 * * * *', async () => {
         });
         await sendEmail(r.email, `Rappel – ${r.tenant_name || 'Barbershop'}`, html);
       }
-      db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('sent', now, r.id);
-      if (r.appointment_id) db.prepare('UPDATE appointments SET reminder_sent = 1 WHERE id = ?').run(r.appointment_id);
+      await db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('sent', now, r.id);
+      if (r.appointment_id) await db.prepare('UPDATE appointments SET reminder_sent = 1 WHERE id = ?').run(r.appointment_id);
     } catch (err) {
       console.error(`[Rappel #${r.id}] Erreur:`, err.message);
     }

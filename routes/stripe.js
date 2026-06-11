@@ -10,7 +10,7 @@ function getStripe() {
 }
 
 // POST /api/stripe/webhook (pas d'auth)
-router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.json({ received: true });
 
@@ -25,7 +25,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) =>
   if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.created') {
     const planMeta = obj.items?.data?.[0]?.price?.metadata?.plan || 'starter';
     const limits = PLANS[planMeta] || PLANS.starter;
-    db.prepare('UPDATE tenants SET plan = ?, plan_status = ?, stripe_subscription_id = ?, current_period_end = ? WHERE stripe_customer_id = ?')
+    await db.prepare('UPDATE tenants SET plan = ?, plan_status = ?, stripe_subscription_id = ?, current_period_end = ? WHERE stripe_customer_id = ?')
       .run(
         planMeta,
         obj.status === 'active' || obj.status === 'trialing' ? obj.status : 'past_due',
@@ -35,13 +35,13 @@ router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) =>
       );
   }
   if (event.type === 'customer.subscription.deleted') {
-    db.prepare("UPDATE tenants SET plan_status = 'cancelled' WHERE stripe_customer_id = ?").run(obj.customer);
+    await db.prepare("UPDATE tenants SET plan_status = 'cancelled' WHERE stripe_customer_id = ?").run(obj.customer);
   }
   if (event.type === 'invoice.payment_failed') {
-    db.prepare("UPDATE tenants SET plan_status = 'past_due' WHERE stripe_customer_id = ?").run(obj.customer);
+    await db.prepare("UPDATE tenants SET plan_status = 'past_due' WHERE stripe_customer_id = ?").run(obj.customer);
   }
   if (event.type === 'invoice.payment_succeeded') {
-    db.prepare("UPDATE tenants SET plan_status = 'active' WHERE stripe_customer_id = ?").run(obj.customer);
+    await db.prepare("UPDATE tenants SET plan_status = 'active' WHERE stripe_customer_id = ?").run(obj.customer);
   }
 
   res.json({ received: true });

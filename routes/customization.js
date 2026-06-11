@@ -36,13 +36,13 @@ router.get('/', (req, res) => {
 });
 
 // PUT /api/admin/customization — mise à jour partielle (seuls les champs envoyés sont modifiés)
-router.put('/', (req, res) => {
+router.put('/', async (req, res) => {
   const allowed = ['primary_color', 'hero_title', 'hero_subtitle', 'hero_tag', 'name', 'phone', 'address', 'instagram_url', 'facebook_url', 'tiktok_url', 'about_text', 'products_text'];
   const toUpdate = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) toUpdate[k] = req.body[k]; });
   if (!Object.keys(toUpdate).length) return res.json({ message: 'Rien à mettre à jour' });
   const sets = Object.keys(toUpdate).map(k => `${k} = ?`).join(', ');
-  db.prepare(`UPDATE tenants SET ${sets} WHERE id = ?`).run(...Object.values(toUpdate), req.tenantId);
+  await db.prepare(`UPDATE tenants SET ${sets} WHERE id = ?`).run(...Object.values(toUpdate), req.tenantId);
   res.json({ message: 'Personnalisation mise à jour' });
 });
 
@@ -58,30 +58,35 @@ function uploadField(field) {
     }
   }).single('image');
 
-  const handler = (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
-    // Supprimer l'ancienne image
-    const old = req.tenant[`${field}_url`];
-    if (old) {
-      const p = path.join(__dirname, '..', 'public', old);
-      if (fs.existsSync(p)) try { fs.unlinkSync(p); } catch(e) {}
-    }
-    const url = `/img/tenants/${req.tenant.slug}/${req.file.filename}`;
-    db.prepare(`UPDATE tenants SET ${field}_url = ? WHERE id = ?`).run(url, req.tenantId);
-    res.json({ url });
+  const handler = (req, res, next) => {
+    upload(req, res, (err) => {
+      (async () => {
+        if (err) return res.status(400).json({ error: err.message });
+        if (!req.file) return res.status(400).json({ error: 'Aucun fichier' });
+        // Supprimer l'ancienne image
+        const old = req.tenant[`${field}_url`];
+        if (old) {
+          const p = path.join(__dirname, '..', 'public', old);
+          if (fs.existsSync(p)) try { fs.unlinkSync(p); } catch(e) {}
+        }
+        const url = `/img/tenants/${req.tenant.slug}/${req.file.filename}`;
+        await db.prepare(`UPDATE tenants SET ${field}_url = ? WHERE id = ?`).run(url, req.tenantId);
+        res.json({ url });
+      })().catch(next);
+    });
   };
 
-  return [upload, handler];
+  return [handler];
 }
 
 function deleteField(field) {
-  return (req, res) => {
+  return async (req, res) => {
     const old = req.tenant[`${field}_url`];
     if (old) {
       const p = path.join(__dirname, '..', 'public', old);
       if (fs.existsSync(p)) try { fs.unlinkSync(p); } catch(e) {}
     }
-    db.prepare(`UPDATE tenants SET ${field}_url = NULL WHERE id = ?`).run(req.tenantId);
+    await db.prepare(`UPDATE tenants SET ${field}_url = NULL WHERE id = ?`).run(req.tenantId);
     res.json({ message: 'Image supprimée' });
   };
 }

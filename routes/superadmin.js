@@ -68,8 +68,8 @@ router.post('/login', async (req, res) => {
 });
 
 // GET /api/superadmin/stats
-router.get('/stats', requireSuperAdmin, (req, res) => {
-  const counts = db.prepare(`
+router.get('/stats', requireSuperAdmin, async (req, res) => {
+  const counts = await db.prepare(`
     SELECT
       COUNT(*) as total,
       SUM(CASE WHEN plan_status='active'   THEN 1 ELSE 0 END) as active,
@@ -79,7 +79,7 @@ router.get('/stats', requireSuperAdmin, (req, res) => {
     FROM tenants
   `).get();
 
-  const planRows = db.prepare(`SELECT plan, plan_status, COUNT(*) as cnt FROM tenants GROUP BY plan, plan_status`).all();
+  const planRows = await db.prepare(`SELECT plan, plan_status, COUNT(*) as cnt FROM tenants GROUP BY plan, plan_status`).all();
   let mrr = 0;
   const byPlan = {};
   planRows.forEach(p => {
@@ -88,15 +88,15 @@ router.get('/stats', requireSuperAdmin, (req, res) => {
     if (p.plan_status === 'active') { mrr += (PLAN_PRICE[p.plan] || 0) * p.cnt; byPlan[p.plan].revenue += (PLAN_PRICE[p.plan] || 0) * p.cnt; }
   });
 
-  const signups30 = db.prepare(`SELECT COUNT(*) as c FROM tenants WHERE created_at >= datetime('now','-30 days')`).get().c;
-  const appts30   = db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE created_at >= datetime('now','-30 days')`).get().c;
+  const signups30 = (await db.prepare(`SELECT COUNT(*) as c FROM tenants WHERE created_at >= (NOW() - INTERVAL '30 days')`).get()).c;
+  const appts30   = (await db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE created_at >= (NOW() - INTERVAL '30 days')`).get()).c;
 
   res.json({ ...counts, mrr, signups_30: signups30, appts_30: appts30, by_plan: byPlan });
 });
 
 // GET /api/superadmin/tenants
-router.get('/tenants', requireSuperAdmin, (req, res) => {
-  const rows = db.prepare(`
+router.get('/tenants', requireSuperAdmin, async (req, res) => {
+  const rows = await db.prepare(`
     SELECT t.*,
       (SELECT u.name  FROM users u WHERE u.tenant_id=t.id AND u.role='owner' LIMIT 1) as owner_name,
       (SELECT u.email FROM users u WHERE u.tenant_id=t.id AND u.role='owner' LIMIT 1) as owner_email,
@@ -109,10 +109,10 @@ router.get('/tenants', requireSuperAdmin, (req, res) => {
 });
 
 // POST /api/superadmin/impersonate/:tenantId  – génère un token court (1h) pour accéder à l'admin du salon
-router.post('/impersonate/:tenantId', requireSuperAdmin, (req, res) => {
-  const tenant = db.prepare('SELECT * FROM tenants WHERE id = ?').get(req.params.tenantId);
+router.post('/impersonate/:tenantId', requireSuperAdmin, async (req, res) => {
+  const tenant = await db.prepare('SELECT * FROM tenants WHERE id = ?').get(req.params.tenantId);
   if (!tenant) return res.status(404).json({ error: 'Salon introuvable' });
-  const owner = db.prepare("SELECT * FROM users WHERE tenant_id=? AND role='owner' LIMIT 1").get(tenant.id);
+  const owner = await db.prepare("SELECT * FROM users WHERE tenant_id=? AND role='owner' LIMIT 1").get(tenant.id);
   if (!owner) return res.status(404).json({ error: 'Propriétaire introuvable' });
 
   const token = jwt.sign(

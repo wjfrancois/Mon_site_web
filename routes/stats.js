@@ -3,18 +3,18 @@ const router = express.Router();
 const db = require('../database');
 const { guardPdfReports } = require('../middleware/planGuard');
 
-router.get('/dashboard', (req, res) => {
+router.get('/dashboard', async (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const thisMonth = today.slice(0, 7);
   const tid = req.tenantId;
 
-  const todayAppts = db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE date = ? AND tenant_id = ? AND status != 'cancelled'`).get(today, tid);
-  const monthAppts = db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE strftime('%Y-%m', date) = ? AND tenant_id = ? AND status != 'cancelled'`).get(thisMonth, tid);
-  const monthRevenue = db.prepare(`SELECT COALESCE(SUM(t.amount), 0) as total FROM transactions t WHERE type = 'income' AND tenant_id = ? AND strftime('%Y-%m', date) = ?`).get(tid, thisMonth);
-  const totalClients = db.prepare('SELECT COUNT(*) as c FROM clients WHERE tenant_id = ?').get(tid);
-  const pendingAppts = db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE date >= ? AND tenant_id = ? AND status = 'pending'`).get(today, tid);
+  const todayAppts = await db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE date = ? AND tenant_id = ? AND status != 'cancelled'`).get(today, tid);
+  const monthAppts = await db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE substring(date, 1, 7) = ? AND tenant_id = ? AND status != 'cancelled'`).get(thisMonth, tid);
+  const monthRevenue = await db.prepare(`SELECT COALESCE(SUM(t.amount), 0) as total FROM transactions t WHERE type = 'income' AND tenant_id = ? AND substring(date, 1, 7) = ?`).get(tid, thisMonth);
+  const totalClients = await db.prepare('SELECT COUNT(*) as c FROM clients WHERE tenant_id = ?').get(tid);
+  const pendingAppts = await db.prepare(`SELECT COUNT(*) as c FROM appointments WHERE date >= ? AND tenant_id = ? AND status = 'pending'`).get(today, tid);
 
-  const upcomingToday = db.prepare(`
+  const upcomingToday = await db.prepare(`
     SELECT a.*, c.name as client_name, c.phone as client_phone,
            b.name as barber_name, b.color as barber_color,
            s.name as service_name, s.duration, s.price
@@ -26,14 +26,14 @@ router.get('/dashboard', (req, res) => {
     ORDER BY a.time ASC
   `).all(today, tid);
 
-  const popularServices = db.prepare(`
+  const popularServices = await db.prepare(`
     SELECT s.name, COUNT(*) as count, SUM(s.price) as revenue
     FROM appointments a JOIN services s ON a.service_id = s.id
     WHERE a.status = 'completed' AND a.tenant_id = ?
     GROUP BY s.id ORDER BY count DESC LIMIT 5
   `).all(tid);
 
-  const barberStats = db.prepare(`
+  const barberStats = await db.prepare(`
     SELECT b.name, b.color, COUNT(a.id) as appointments,
            SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END) as revenue
     FROM barbers b LEFT JOIN appointments a ON b.id = a.barber_id AND a.tenant_id = ?
@@ -42,14 +42,14 @@ router.get('/dashboard', (req, res) => {
     GROUP BY b.id ORDER BY revenue DESC
   `).all(tid, tid);
 
-  const monthlyRevenue = db.prepare(`
-    SELECT strftime('%Y-%m', date) as month,
+  const monthlyRevenue = await db.prepare(`
+    SELECT substring(date, 1, 7) as month,
            SUM(CASE WHEN type='income' THEN amount ELSE 0 END) as income
-    FROM transactions WHERE tenant_id = ? AND strftime('%Y', date) = strftime('%Y', 'now')
+    FROM transactions WHERE tenant_id = ? AND substring(date, 1, 4) = to_char(NOW(), 'YYYY')
     GROUP BY month ORDER BY month ASC
   `).all(tid);
 
-  const recentClients = db.prepare(`
+  const recentClients = await db.prepare(`
     SELECT c.*, MAX(a.date) as last_visit, COUNT(a.id) as visit_count
     FROM clients c JOIN appointments a ON c.id = a.client_id
     WHERE a.status = 'completed' AND c.tenant_id = ?
@@ -70,12 +70,12 @@ router.get('/dashboard', (req, res) => {
   });
 });
 
-router.get('/reports', guardPdfReports, (req, res) => {
+router.get('/reports', guardPdfReports, async (req, res) => {
   const { start_date, end_date } = req.query;
   if (!start_date || !end_date) return res.status(400).json({ error: 'Dates requises' });
   const tid = req.tenantId;
 
-  const appointments = db.prepare(`
+  const appointments = await db.prepare(`
     SELECT a.date, a.time, a.status,
            c.name as client, c.phone as client_phone,
            b.name as barber,
@@ -88,12 +88,12 @@ router.get('/reports', guardPdfReports, (req, res) => {
     ORDER BY a.date ASC, a.time ASC
   `).all(tid, start_date, end_date);
 
-  const transactions = db.prepare(`
+  const transactions = await db.prepare(`
     SELECT * FROM transactions WHERE tenant_id = ? AND date BETWEEN ? AND ?
     ORDER BY date ASC
   `).all(tid, start_date, end_date);
 
-  const summary = db.prepare(`
+  const summary = await db.prepare(`
     SELECT
       COUNT(DISTINCT CASE WHEN a.status='completed' THEN a.id END) as completed,
       COUNT(DISTINCT CASE WHEN a.status='no-show' THEN a.id END) as no_shows,

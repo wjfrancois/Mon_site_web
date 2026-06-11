@@ -29,8 +29,8 @@ const upload = multer({
 }).single('photo');
 
 // GET /api/admin/products
-router.get('/', (req, res) => {
-  const products = db.prepare('SELECT * FROM products WHERE tenant_id = ? AND active = 1 ORDER BY position ASC, created_at ASC').all(req.tenantId);
+router.get('/', async (req, res) => {
+  const products = await db.prepare('SELECT * FROM products WHERE tenant_id = ? AND active = 1 ORDER BY position ASC, created_at ASC').all(req.tenantId);
   res.json(products);
 });
 
@@ -38,30 +38,27 @@ router.get('/', (req, res) => {
 router.post('/', (req, res, next) => {
   upload(req, res, (err) => {
     console.log('[Products POST] tenant:', req.tenantId, 'err:', err?.message, 'file:', req.file?.originalname);
-    try {
+    (async () => {
       if (err) return res.status(400).json({ error: err.message });
       const photo_url = req.file
         ? `/img/tenants/${req.tenant.slug}/products/${req.file.filename}`
         : null;
       const { name, brand, type, price, description } = req.body || {};
       if (!name) return res.status(400).json({ error: 'Le nom du produit est obligatoire' });
-      const result = db.prepare(
+      const result = await db.prepare(
         'INSERT INTO products (tenant_id, name, brand, type, price, photo_url, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
       ).run(req.tenantId, name, brand || null, type || null, price ? parseFloat(price) : 0, photo_url, description || null);
       res.json({ id: result.lastInsertRowid, name, brand, type, price, photo_url, description });
-    } catch (e) {
-      console.error('[Products POST] error:', e.message);
-      next(e);
-    }
+    })().catch(next);
   });
 });
 
 // PUT /api/admin/products/:id — update text fields only
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
   const { name, brand, type, price, description, active, position } = req.body || {};
-  const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
+  const product = await db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
   if (!product) return res.status(404).json({ error: 'Produit introuvable' });
-  db.prepare(
+  await db.prepare(
     'UPDATE products SET name = ?, brand = ?, type = ?, price = ?, description = ?, active = ?, position = ? WHERE id = ? AND tenant_id = ?'
   ).run(
     name !== undefined ? name : product.name,
@@ -78,14 +75,14 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE /api/admin/products/:id
-router.delete('/:id', (req, res) => {
-  const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
+router.delete('/:id', async (req, res) => {
+  const product = await db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
   if (!product) return res.status(404).json({ error: 'Produit introuvable' });
   if (product.photo_url) {
     const filePath = path.join(__dirname, '..', 'public', product.photo_url);
     if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (e) {}
   }
-  db.prepare('DELETE FROM products WHERE id = ? AND tenant_id = ?').run(req.params.id, req.tenantId);
+  await db.prepare('DELETE FROM products WHERE id = ? AND tenant_id = ?').run(req.params.id, req.tenantId);
   res.json({ message: 'Produit supprimé' });
 });
 
@@ -93,10 +90,10 @@ router.delete('/:id', (req, res) => {
 router.patch('/:id/photo', (req, res, next) => {
   upload(req, res, (err) => {
     console.log('[Products PATCH photo] tenant:', req.tenantId, 'err:', err?.message, 'file:', req.file?.originalname);
-    try {
+    (async () => {
       if (err) return res.status(400).json({ error: err.message });
       if (!req.file) return res.status(400).json({ error: 'Format non supporté (.jpg, .png, .webp requis)' });
-      const product = db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
+      const product = await db.prepare('SELECT * FROM products WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
       if (!product) return res.status(404).json({ error: 'Produit introuvable' });
       // Delete old photo file if it exists
       if (product.photo_url) {
@@ -104,12 +101,9 @@ router.patch('/:id/photo', (req, res, next) => {
         if (fs.existsSync(oldPath)) try { fs.unlinkSync(oldPath); } catch (e) {}
       }
       const photo_url = `/img/tenants/${req.tenant.slug}/products/${req.file.filename}`;
-      db.prepare('UPDATE products SET photo_url = ? WHERE id = ? AND tenant_id = ?').run(photo_url, req.params.id, req.tenantId);
+      await db.prepare('UPDATE products SET photo_url = ? WHERE id = ? AND tenant_id = ?').run(photo_url, req.params.id, req.tenantId);
       res.json({ message: 'Photo mise à jour', photo_url });
-    } catch (e) {
-      console.error('[Products PATCH photo] error:', e.message);
-      next(e);
-    }
+    })().catch(next);
   });
 });
 

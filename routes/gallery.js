@@ -29,8 +29,8 @@ const upload = multer({
 }).single('image');
 
 // GET /api/admin/gallery
-router.get('/', (req, res) => {
-  const photos = db.prepare('SELECT * FROM gallery WHERE tenant_id = ? ORDER BY position ASC, created_at ASC').all(req.tenantId);
+router.get('/', async (req, res) => {
+  const photos = await db.prepare('SELECT * FROM gallery WHERE tenant_id = ? ORDER BY position ASC, created_at ASC').all(req.tenantId);
   res.json(photos);
 });
 
@@ -38,34 +38,34 @@ router.get('/', (req, res) => {
 router.post('/', (req, res, next) => {
   upload(req, res, (err) => {
     console.log('[Gallery POST] tenant:', req.tenantId, 'err:', err?.message, 'file:', req.file?.originalname);
-    try {
+    (async () => {
       if (err) return res.status(400).json({ error: err.message });
       if (!req.file) return res.status(400).json({ error: 'Format non supporté (.jpg, .png, .webp requis)' });
       const url = `/img/tenants/${req.tenant.slug}/gallery/${req.file.filename}`;
       const caption = (req.body && req.body.caption) ? req.body.caption : '';
-      const result = db.prepare('INSERT INTO gallery (tenant_id, url, caption) VALUES (?, ?, ?)').run(req.tenantId, url, caption);
+      const result = await db.prepare('INSERT INTO gallery (tenant_id, url, caption) VALUES (?, ?, ?)').run(req.tenantId, url, caption);
       res.json({ id: result.lastInsertRowid, url, caption });
-    } catch (e) {
+    })().catch(e => {
       console.error('[Gallery POST] error:', e.message);
       next(e);
-    }
+    });
   });
 });
 
 // PATCH /api/admin/gallery/:id — update caption
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   const { caption } = req.body;
-  db.prepare('UPDATE gallery SET caption = ? WHERE id = ? AND tenant_id = ?').run(caption || '', req.params.id, req.tenantId);
+  await db.prepare('UPDATE gallery SET caption = ? WHERE id = ? AND tenant_id = ?').run(caption || '', req.params.id, req.tenantId);
   res.json({ message: 'Légende mise à jour' });
 });
 
 // DELETE /api/admin/gallery/:id
-router.delete('/:id', (req, res) => {
-  const photo = db.prepare('SELECT * FROM gallery WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
+router.delete('/:id', async (req, res) => {
+  const photo = await db.prepare('SELECT * FROM gallery WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
   if (!photo) return res.status(404).json({ error: 'Photo introuvable' });
   const filePath = path.join(__dirname, '..', 'public', photo.url);
   if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (e) {}
-  db.prepare('DELETE FROM gallery WHERE id = ? AND tenant_id = ?').run(req.params.id, req.tenantId);
+  await db.prepare('DELETE FROM gallery WHERE id = ? AND tenant_id = ?').run(req.params.id, req.tenantId);
   res.json({ message: 'Photo supprimée' });
 });
 
