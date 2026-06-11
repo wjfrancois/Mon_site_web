@@ -135,7 +135,7 @@ function showPage(page) {
   document.getElementById('pageTitle').textContent = pageTitles[page] || page;
   document.getElementById('sidebar').classList.remove('open');
 
-  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, settings: loadSettings, customization: loadCustomization, team: loadTeam, billing: loadBilling };
+  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, settings: loadSettings, gallery: loadGallery, customization: loadCustomization, team: loadTeam, billing: loadBilling };
   loaders[page]?.();
 }
 
@@ -309,7 +309,14 @@ function renderCalendarView(appointments, date, barberId) {
   hours.forEach(h => {
     html += `<div class="cal-time-label">${h}</div>`;
     barbers.forEach(b => {
-      const appts = appointments.filter(a => a.barber_id === b.id && a.time.slice(0,5) === h);
+      const appts = appointments.filter(a => {
+        if (a.barber_id !== b.id) return false;
+        const [ah, am] = a.time.split(':').map(Number);
+        const apptMin = ah * 60 + am;
+        const [hh, hm] = h.split(':').map(Number);
+        const slotMin = hh * 60 + hm;
+        return apptMin >= slotMin && apptMin < slotMin + 30;
+      });
       let cellHtml = '';
       appts.forEach(a => {
         const heightPercent = Math.min(a.duration / 30 * 100, 200);
@@ -1068,6 +1075,55 @@ async function saveCustomizationColor() {
   const color = document.getElementById('customColor')?.value;
   const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify({ primary_color: color }) });
   if (res?.ok) showToast('Couleur appliquée', 'success');
+}
+
+// ---- GALLERY ----
+async function loadGallery() {
+  const res = await authFetch('/api/admin/gallery');
+  if (!res?.ok) return;
+  const photos = await res.json();
+  const grid = document.getElementById('galleryGrid');
+  if (!grid) return;
+  if (!photos.length) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-images"></i><p>Aucune photo pour l\'instant</p></div>';
+    return;
+  }
+  grid.innerHTML = photos.map(p => `
+    <div class="gallery-admin-item" id="gallery-item-${p.id}">
+      <div class="gallery-admin-img-wrap">
+        <img src="${p.url}" alt="${p.caption || ''}">
+        <button class="gallery-admin-delete" onclick="deleteGalleryPhoto(${p.id})" title="Supprimer"><i class="fas fa-trash"></i></button>
+      </div>
+      <input type="text" class="form-input gallery-caption-input" value="${p.caption || ''}" placeholder="Légende (optionnel)"
+        onblur="saveGalleryCaption(${p.id}, this.value)" style="margin-top:0.5rem;font-size:0.8rem;padding:6px 8px">
+    </div>
+  `).join('');
+}
+
+async function uploadGalleryPhotos(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let uploaded = 0;
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const res = await authFetch('/api/admin/gallery', { method: 'POST', body: formData });
+    if (res?.ok) uploaded++;
+    else showToast('Erreur pour: ' + file.name, 'error');
+  }
+  if (uploaded) showToast(`${uploaded} photo(s) ajoutée(s)`, 'success');
+  input.value = '';
+  loadGallery();
+}
+
+async function deleteGalleryPhoto(id) {
+  if (!confirm('Supprimer cette photo ?')) return;
+  const res = await authFetch(`/api/admin/gallery/${id}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Photo supprimée', 'success'); loadGallery(); }
+}
+
+async function saveGalleryCaption(id, caption) {
+  await authFetch(`/api/admin/gallery/${id}`, { method: 'PATCH', body: JSON.stringify({ caption }) });
 }
 
 function copyBookingUrl() {

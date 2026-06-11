@@ -20,12 +20,46 @@ const state = {
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', () => {
   loadTenantInfo();
+  loadGallery();
   loadServices();
   loadBarbers();
   initCalendar();
 
   document.getElementById('bookingForm').addEventListener('submit', submitBooking);
 });
+
+async function loadGallery() {
+  try {
+    const res = await fetch(`${API_BASE}/gallery`);
+    if (!res.ok) return;
+    const photos = await res.json();
+    if (!photos.length) return;
+    const section = document.getElementById('gallery-section');
+    const grid = document.getElementById('galleryGrid');
+    if (!section || !grid) return;
+    grid.innerHTML = photos.map(p => `
+      <div class="gallery-public-item">
+        <img src="${p.url}" alt="${p.caption || ''}" loading="lazy" onclick="openLightbox('${p.url}', '${(p.caption||'').replace(/'/g,"\\'")}')">
+        ${p.caption ? `<div class="gallery-public-caption">${p.caption}</div>` : ''}
+      </div>
+    `).join('');
+    section.style.display = 'block';
+  } catch (e) {}
+}
+
+function openLightbox(url, caption) {
+  const lb = document.createElement('div');
+  lb.className = 'gallery-lightbox';
+  lb.innerHTML = `
+    <div class="gallery-lightbox-backdrop" onclick="this.parentElement.remove()"></div>
+    <div class="gallery-lightbox-content">
+      <img src="${url}" alt="${caption}">
+      ${caption ? `<p>${caption}</p>` : ''}
+      <button onclick="this.closest('.gallery-lightbox').remove()"><i class="fas fa-times"></i></button>
+    </div>
+  `;
+  document.body.appendChild(lb);
+}
 
 // ---- TENANT INFO ----
 async function loadTenantInfo() {

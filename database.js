@@ -220,4 +220,17 @@ if (tenantCount.c === 0) {
   tx();
 }
 
+// Migration: table galerie
+db.exec(`
+  CREATE TABLE IF NOT EXISTS gallery (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    caption TEXT,
+    position INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+  );
+`);
+
 module.exports = db;

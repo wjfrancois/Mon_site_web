@@ -53,6 +53,7 @@ app.use('/api/reminders', requireAuth, require('./routes/reminders'));
 app.use('/api/admin/customization', requireAuth, require('./routes/customization'));
 app.use('/api/admin/team', requireAuth, require('./routes/team'));
 app.use('/api/admin/billing', requireAuth, require('./routes/stripe'));
+app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 
 // GET /api/admin/me — infos utilisateur + tenant + plan
 app.get('/api/admin/me', requireAuth, (req, res) => {
