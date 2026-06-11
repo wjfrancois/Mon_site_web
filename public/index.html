@@ -2,230 +2,347 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>Fenix Barbier – Prise de rendez-vous</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créno – Logiciel de gestion pour salons de barbier</title>
+  <meta name="description" content="Créno permet aux salons de barbier de gérer leurs rendez-vous en ligne, leurs clients et leur équipe depuis un tableau de bord simple et élégant.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --dark: #0f172a;
+      --dark2: #1e293b;
+      --gold: #e2b04a;
+      --gold-dark: #c9962e;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: rgba(255,255,255,0.08);
+      --green: #10b981;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--dark); color: var(--text); }
+    a { text-decoration: none; color: inherit; }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,23,42,0.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem; height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; font-weight: 800; font-size: 1.2rem; }
+    .nav-logo i { color: var(--gold); }
+    .nav-links { display: flex; align-items: center; gap: 2rem; }
+    .nav-links a { font-size: 0.875rem; color: var(--muted); transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta { display: flex; align-items: center; gap: 0.75rem; }
+    .btn-ghost { padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--muted); background: transparent; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    .btn-gold { padding: 0.5rem 1.25rem; font-size: 0.875rem; font-weight: 600; color: #0f172a; background: var(--gold); border: none; border-radius: 8px; cursor: pointer; font-family: inherit; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn-gold:hover { background: var(--gold-dark); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: calc(100vh - 64px);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 5rem 2rem;
+      background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(226,176,74,0.12) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(226,176,74,0.1); border: 1px solid rgba(226,176,74,0.3);
+      color: var(--gold); border-radius: 999px; padding: 0.35rem 1rem;
+      font-size: 0.8rem; font-weight: 600; margin-bottom: 2rem; letter-spacing: 0.03em;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      line-height: 1.1; max-width: 800px; margin-bottom: 1.5rem;
+    }
+    .hero h1 span { color: var(--gold); }
+    .hero p { font-size: 1.125rem; color: var(--muted); max-width: 540px; line-height: 1.7; margin-bottom: 2.5rem; }
+    .hero-btns { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .btn-hero-primary {
+      padding: 0.9rem 2rem; font-size: 1rem; font-weight: 700;
+      color: #0f172a; background: var(--gold); border: none; border-radius: 10px;
+      cursor: pointer; font-family: inherit; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      box-shadow: 0 4px 24px rgba(226,176,74,0.35);
+    }
+    .btn-hero-primary:hover { background: var(--gold-dark); transform: translateY(-1px); }
+    .btn-hero-secondary {
+      padding: 0.9rem 2rem; font-size: 1rem; font-weight: 600;
+      color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 10px;
+      cursor: pointer; font-family: inherit; transition: all 0.2s;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+    .btn-hero-secondary:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.04); }
+    .hero-sub { margin-top: 2rem; font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+    .hero-sub i { color: var(--green); }
+
+    /* ── PROOF ── */
+    .proof { padding: 3rem 2rem; text-align: center; border-top: 1px solid var(--border); }
+    .proof p { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.5rem; }
+    .proof-stats { display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; }
+    .proof-stat .num { font-size: 2rem; font-weight: 800; color: var(--gold); }
+    .proof-stat .lbl { font-size: 0.8rem; color: var(--muted); margin-top: 0.2rem; }
+
+    /* ── FEATURES ── */
+    .section { padding: 6rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .section-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); margin-bottom: 0.75rem; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: clamp(1.75rem, 3vw, 2.5rem); margin-bottom: 1rem; }
+    .section-sub { color: var(--muted); font-size: 1rem; max-width: 520px; line-height: 1.7; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .feature-card {
+      background: var(--dark2); border: 1px solid var(--border); border-radius: 16px;
+      padding: 1.75rem; transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover { border-color: rgba(226,176,74,0.3); transform: translateY(-3px); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: rgba(226,176,74,0.1); border: 1px solid rgba(226,176,74,0.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; color: var(--gold); margin-bottom: 1.25rem;
+    }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .feature-card p { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── HOW IT WORKS ── */
+    .how { background: var(--dark2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6rem 2rem; }
+    .how-inner { max-width: 1200px; margin: 0 auto; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 2rem; margin-top: 3rem; }
+    .step { text-align: center; }
+    .step-num {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: rgba(226,176,74,0.1); border: 2px solid rgba(226,176,74,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; font-weight: 800; color: var(--gold);
+      margin: 0 auto 1.25rem;
+    }
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .step p { font-size: 0.875rem; color: var(--muted); line-height: 1.6; }
+
+    /* ── PRICING ── */
+    .pricing-preview { padding: 6rem 2rem; max-width: 1200px; margin: 0 auto; }
+    .plans-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .plan {
+      background: var(--dark2); border: 1px solid var(--border); border-radius: 16px;
+      padding: 2rem; position: relative; transition: all 0.2s;
+    }
+    .plan.featured { border-color: var(--gold); background: rgba(226,176,74,0.05); }
+    .plan-badge-featured {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      background: var(--gold); color: #0f172a; font-size: 0.7rem; font-weight: 700;
+      padding: 0.25rem 0.85rem; border-radius: 999px; white-space: nowrap;
+    }
+    .plan-name { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.75rem; }
+    .plan-price { font-size: 2.5rem; font-weight: 800; margin-bottom: 0.25rem; }
+    .plan-price span { font-size: 1rem; font-weight: 400; color: var(--muted); }
+    .plan-desc { font-size: 0.875rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .plan-features { list-style: none; margin-bottom: 2rem; }
+    .plan-features li { font-size: 0.875rem; padding: 0.4rem 0; color: var(--muted); display: flex; align-items: center; gap: 0.6rem; }
+    .plan-features li i { color: var(--green); font-size: 0.75rem; flex-shrink: 0; }
+    .btn-plan { width: 100%; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+    .btn-plan-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-plan-outline:hover { border-color: var(--gold); color: var(--gold); }
+    .btn-plan-gold { background: var(--gold); color: #0f172a; border: none; }
+    .btn-plan-gold:hover { background: var(--gold-dark); }
+
+    /* ── CTA BANNER ── */
+    .cta-banner {
+      margin: 0 auto 6rem; border-radius: 20px; max-width: 900px;
+      background: linear-gradient(135deg, rgba(226,176,74,0.15) 0%, rgba(226,176,74,0.05) 100%);
+      border: 1px solid rgba(226,176,74,0.25);
+      padding: 4rem 2rem; text-align: center;
+    }
+    .cta-banner h2 { font-family: 'Playfair Display', serif; font-size: clamp(1.75rem, 3vw, 2.5rem); margin-bottom: 1rem; }
+    .cta-banner p { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 2rem;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+      max-width: 1200px; margin: 0 auto;
+    }
+    .footer-logo { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
+    .footer-logo i { color: var(--gold); }
+    footer p { font-size: 0.8rem; color: var(--muted); }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-links a { font-size: 0.8rem; color: var(--muted); transition: color 0.2s; }
+    .footer-links a:hover { color: var(--gold); }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .proof-stats { gap: 2rem; }
+      footer { flex-direction: column; text-align: center; }
+    }
+  </style>
 </head>
-<body class="client-body">
+<body>
 
-<!-- HEADER -->
-<header class="client-header">
-  <div class="header-inner">
-    <div class="logo">
-      <i class="fas fa-cut"></i>
-      <span>Fenix Barbier</span>
+<nav>
+  <div class="nav-logo"><i class="fas fa-cut"></i> Créno</div>
+  <div class="nav-links">
+    <a href="#features">Fonctionnalités</a>
+    <a href="#how">Comment ça marche</a>
+    <a href="/pricing">Tarifs</a>
+  </div>
+  <div class="nav-cta">
+    <a href="/login"><button class="btn-ghost">Connexion</button></a>
+    <a href="/signup"><button class="btn-gold"><i class="fas fa-rocket"></i> Essai gratuit</button></a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-badge"><i class="fas fa-star"></i> Essai gratuit 30 jours — aucune carte requise</div>
+  <h1>Gérez votre salon de barbier <span>en toute simplicité</span></h1>
+  <p>Créno donne à chaque barbier sa propre page de réservation en ligne, un tableau de bord complet et des rappels automatiques pour ses clients.</p>
+  <div class="hero-btns">
+    <a href="/signup"><button class="btn-hero-primary"><i class="fas fa-rocket"></i> Créer mon salon gratuitement</button></a>
+    <a href="/pricing"><button class="btn-hero-secondary"><i class="fas fa-tag"></i> Voir les tarifs</button></a>
+  </div>
+  <div class="hero-sub"><i class="fas fa-check-circle"></i> Prêt en moins de 2 minutes · Aucune carte de crédit</div>
+</section>
+
+<div class="proof">
+  <p>Pourquoi Créno ?</p>
+  <div class="proof-stats">
+    <div class="proof-stat"><div class="num">2 min</div><div class="lbl">Pour créer son salon</div></div>
+    <div class="proof-stat"><div class="num">30 j</div><div class="lbl">D'essai gratuit</div></div>
+    <div class="proof-stat"><div class="num">24/7</div><div class="lbl">Réservations en ligne</div></div>
+    <div class="proof-stat"><div class="num">100%</div><div class="lbl">Données isolées par salon</div></div>
+  </div>
+</div>
+
+<section class="section" id="features">
+  <div class="section-label">Fonctionnalités</div>
+  <h2 class="section-title">Tout ce dont votre salon a besoin</h2>
+  <p class="section-sub">Une suite complète pensée pour les barbiers — sans complexité inutile.</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-link"></i></div>
+      <h3>Page de réservation unique</h3>
+      <p>Chaque salon obtient son propre lien public à partager avec ses clients. Réservations 24h/24, 7j/7.</p>
     </div>
-    <nav class="header-nav">
-      <a href="#booking" class="nav-link active">Réserver</a>
-      <a href="#services-section" class="nav-link">Services</a>
-      <a href="#team" class="nav-link">Notre équipe</a>
-      <a href="/admin" class="nav-link nav-admin"><i class="fas fa-lock"></i> Admin</a>
-    </nav>
-    <button class="hamburger" id="hamburger" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-  <div class="mobile-menu" id="mobileMenu">
-    <a href="#booking">Réserver</a>
-    <a href="#services-section">Services</a>
-    <a href="#team">Notre équipe</a>
-    <a href="/admin">Admin</a>
-  </div>
-</header>
-
-<!-- HERO -->
-<section class="hero" id="heroSection">
-  <div class="hero-bg" id="heroBg"></div>
-  <div class="hero-overlay"></div>
-  <div class="hero-content">
-    <p class="hero-tag" id="heroTag">Salon de coiffure pour hommes</p>
-    <h1 class="hero-title" id="heroTitle">L'art de la<br><span>coupe parfaite</span></h1>
-    <p class="hero-sub" id="heroSub">Prenez rendez-vous en ligne, 24h/24 — Résultats garantis</p>
-    <a href="#booking" class="btn btn-primary btn-lg">
-      <i class="fas fa-calendar-plus"></i> Réserver maintenant
-    </a>
-  </div>
-  <div class="hero-stats">
-    <div class="stat"><strong>500+</strong><span>Clients satisfaits</span></div>
-    <div class="stat"><strong>3</strong><span>Barbiers experts</span></div>
-    <div class="stat"><strong>6+</strong><span>Services offerts</span></div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-calendar-check"></i></div>
+      <h3>Agenda en temps réel</h3>
+      <p>Visualisez tous vos rendez-vous par jour et par barbier. Ajoutez, modifiez ou annulez en un clic.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-comment-sms"></i></div>
+      <h3>Rappels SMS automatiques</h3>
+      <p>Envoyez des rappels automatiques 24h avant chaque rendez-vous. Réduisez les no-shows.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-users"></i></div>
+      <h3>Gestion des clients</h3>
+      <p>Fiche client complète, historique des visites, notes personnalisées. Fidélisez votre clientèle.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+      <h3>Statistiques et rapports</h3>
+      <p>Suivez vos revenus, vos services les plus populaires et la performance de votre équipe.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon"><i class="fas fa-paint-brush"></i></div>
+      <h3>Personnalisation complète</h3>
+      <p>Logo, couleurs, bannière, photo hero — votre page de réservation à votre image de marque.</p>
+    </div>
   </div>
 </section>
 
-<!-- SERVICES -->
-<section class="section" id="services-section">
-  <div class="container">
-    <div class="section-header">
-      <h2>Nos services</h2>
-      <p>Des soins capillaires de qualité à des prix justes</p>
-    </div>
-    <div class="services-grid" id="servicesGrid">
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-    </div>
-  </div>
-</section>
-
-<!-- TEAM -->
-<section class="section section-dark" id="team">
-  <div class="container">
-    <div class="section-header">
-      <h2>Notre équipe</h2>
-      <p>Des professionnels passionnés à votre service</p>
-    </div>
-    <div class="team-grid" id="teamGrid">
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-    </div>
-  </div>
-</section>
-
-<!-- BOOKING -->
-<section class="section" id="booking">
-  <div class="container">
-    <div class="section-header">
-      <h2>Prendre un rendez-vous</h2>
-      <p>Quelques étapes simples pour réserver votre place</p>
-    </div>
-
-    <div class="booking-wizard" id="bookingWizard">
-      <!-- Steps indicator -->
-      <div class="steps-indicator">
-        <div class="step active" data-step="1"><span>1</span><p>Service</p></div>
-        <div class="step-line"></div>
-        <div class="step" data-step="2"><span>2</span><p>Barbier</p></div>
-        <div class="step-line"></div>
-        <div class="step" data-step="3"><span>3</span><p>Date & Heure</p></div>
-        <div class="step-line"></div>
-        <div class="step" data-step="4"><span>4</span><p>Vos infos</p></div>
+<section class="how" id="how">
+  <div class="how-inner">
+    <div class="section-label">Comment ça marche</div>
+    <h2 class="section-title">Lancez-vous en 3 étapes</h2>
+    <p class="section-sub">Pas de configuration complexe. Votre salon est en ligne en moins de 2 minutes.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Créez votre salon</h3>
+        <p>Inscrivez-vous avec le nom de votre salon, votre email et votre mot de passe. Votre espace est prêt instantanément.</p>
       </div>
-
-      <!-- Step 1: Service -->
-      <div class="wizard-step" id="step1">
-        <h3>Choisissez votre service</h3>
-        <div class="services-select-grid" id="serviceSelectGrid">
-          <div class="spinner-container"><div class="spinner"></div></div>
-        </div>
-        <div class="step-nav">
-          <button class="btn btn-primary" id="step1Next" disabled onclick="goToStep(2)">Suivant <i class="fas fa-arrow-right"></i></button>
-        </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Partagez votre lien</h3>
+        <p>Votre page de réservation unique est disponible immédiatement. Partagez-la sur Instagram, Google ou par message.</p>
       </div>
-
-      <!-- Step 2: Barber -->
-      <div class="wizard-step hidden" id="step2">
-        <h3>Choisissez votre barbier</h3>
-        <p class="step-hint">Ou laissez-nous choisir le premier disponible</p>
-        <div class="barbers-grid" id="barberSelectGrid">
-          <div class="spinner-container"><div class="spinner"></div></div>
-        </div>
-        <div class="step-nav">
-          <button class="btn btn-outline" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Retour</button>
-          <button class="btn btn-primary" id="step2Next" disabled onclick="goToStep(3)">Suivant <i class="fas fa-arrow-right"></i></button>
-        </div>
-      </div>
-
-      <!-- Step 3: Date & Time -->
-      <div class="wizard-step hidden" id="step3">
-        <h3>Choisissez la date et l'heure</h3>
-        <div class="datetime-picker">
-          <div class="calendar-nav">
-            <button class="btn btn-icon" id="prevMonth"><i class="fas fa-chevron-left"></i></button>
-            <h4 id="calendarTitle"></h4>
-            <button class="btn btn-icon" id="nextMonth"><i class="fas fa-chevron-right"></i></button>
-          </div>
-          <div class="calendar-grid" id="calendarGrid"></div>
-          <div class="time-slots-section" id="timeSlotsSection" style="display:none">
-            <h4 id="selectedDateLabel"></h4>
-            <div class="time-slots" id="timeSlots">
-              <div class="spinner-container"><div class="spinner"></div></div>
-            </div>
-          </div>
-        </div>
-        <div class="step-nav">
-          <button class="btn btn-outline" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Retour</button>
-          <button class="btn btn-primary" id="step3Next" disabled onclick="goToStep(4)">Suivant <i class="fas fa-arrow-right"></i></button>
-        </div>
-      </div>
-
-      <!-- Step 4: Client Info -->
-      <div class="wizard-step hidden" id="step4">
-        <h3>Vos coordonnées</h3>
-        <div class="booking-summary" id="bookingSummary"></div>
-        <form id="clientForm" class="client-form">
-          <div class="form-group">
-            <label><i class="fas fa-user"></i> Nom complet *</label>
-            <input type="text" id="clientName" placeholder="Ex: Jean Dupont" required>
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-phone"></i> Téléphone *</label>
-            <input type="tel" id="clientPhone" placeholder="514-555-0000" required>
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-envelope"></i> Courriel (optionnel)</label>
-            <input type="email" id="clientEmail" placeholder="votre@email.com">
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-comment"></i> Notes (optionnel)</label>
-            <textarea id="apptNotes" placeholder="Demandes spéciales, allergies..." rows="3"></textarea>
-          </div>
-          <div class="form-row">
-            <button type="button" class="btn btn-outline" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Retour</button>
-            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-              <i class="fas fa-check-circle"></i> Confirmer le rendez-vous
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Confirmation -->
-      <div class="wizard-step hidden" id="stepSuccess">
-        <div class="success-screen">
-          <div class="success-icon"><i class="fas fa-check-circle"></i></div>
-          <h3>Rendez-vous confirmé !</h3>
-          <p>Vous recevrez un rappel par SMS 24h avant votre rendez-vous.</p>
-          <div class="booking-confirmation" id="confirmationDetails"></div>
-          <button class="btn btn-primary" onclick="resetBooking()">
-            <i class="fas fa-plus"></i> Nouveau rendez-vous
-          </button>
-        </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Gérez depuis votre admin</h3>
+        <p>Accédez à votre tableau de bord pour voir vos rendez-vous, vos clients et vos revenus en temps réel.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- FOOTER -->
-<footer class="footer">
-  <div class="container">
-    <div class="footer-grid">
-      <div>
-        <div class="logo"><i class="fas fa-cut"></i> Fenix Barbier</div>
-        <p>L'art de la coupe parfaite depuis 2015.</p>
-      </div>
-      <div>
-        <h4>Horaires</h4>
-        <p>Mar – Ven : 9h – 18h</p>
-        <p>Samedi : 9h – 18h</p>
-        <p>Dimanche : 10h – 17h</p>
-        <p class="closed">Lundi : Fermé</p>
-      </div>
-      <div>
-        <h4>Contact</h4>
-        <p><i class="fas fa-phone"></i> 418-555-0100</p>
-        <p><i class="fas fa-envelope"></i> info@fenix-barbier.ca</p>
-        <p><i class="fas fa-map-marker-alt"></i> 155 Rue Des Chênes O, Quebec Qc G1L 1K6</p>
-      </div>
+<section class="pricing-preview" id="pricing">
+  <div style="text-align:center">
+    <div class="section-label" style="display:inline-block">Tarifs</div>
+    <h2 class="section-title">Simple et transparent</h2>
+    <p class="section-sub" style="margin:0 auto 0">30 jours gratuits, sans carte de crédit. Annulez à tout moment.</p>
+  </div>
+  <div class="plans-grid">
+    <div class="plan">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price">29 $<span>/mois</span></div>
+      <div class="plan-desc">Pour les barbiers solos qui débutent en ligne.</div>
+      <ul class="plan-features">
+        <li><i class="fas fa-check"></i> 1 barbier</li>
+        <li><i class="fas fa-check"></i> Page de réservation</li>
+        <li><i class="fas fa-check"></i> 50 SMS / mois</li>
+        <li><i class="fas fa-check"></i> Gestion clients</li>
+      </ul>
+      <a href="/signup?plan=starter"><button class="btn-plan btn-plan-outline">Commencer</button></a>
     </div>
-    <div class="footer-bottom">
-      <p>&copy; 2026 Fenix Barbier. Tous droits réservés.</p>
+    <div class="plan featured">
+      <div class="plan-badge-featured">⭐ Le plus populaire</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">59 $<span>/mois</span></div>
+      <div class="plan-desc">Pour les salons avec plusieurs barbiers.</div>
+      <ul class="plan-features">
+        <li><i class="fas fa-check"></i> Jusqu'à 3 barbiers</li>
+        <li><i class="fas fa-check"></i> 200 SMS / mois</li>
+        <li><i class="fas fa-check"></i> Rapports PDF</li>
+        <li><i class="fas fa-check"></i> Gestion d'équipe</li>
+      </ul>
+      <a href="/signup?plan=pro"><button class="btn-plan btn-plan-gold">Commencer — 30 j gratuits</button></a>
     </div>
+    <div class="plan">
+      <div class="plan-name">Business</div>
+      <div class="plan-price">99 $<span>/mois</span></div>
+      <div class="plan-desc">Pour les grandes équipes et franchises.</div>
+      <ul class="plan-features">
+        <li><i class="fas fa-check"></i> Barbiers illimités</li>
+        <li><i class="fas fa-check"></i> 500 SMS / mois</li>
+        <li><i class="fas fa-check"></i> Accès complet</li>
+        <li><i class="fas fa-check"></i> Support prioritaire</li>
+      </ul>
+      <a href="/signup?plan=business"><button class="btn-plan btn-plan-outline">Commencer</button></a>
+    </div>
+  </div>
+</section>
+
+<div style="padding:0 2rem">
+  <div class="cta-banner">
+    <h2>Prêt à moderniser votre salon ?</h2>
+    <p>Rejoignez les barbiers qui gèrent leurs rendez-vous en ligne avec Créno.</p>
+    <a href="/signup"><button class="btn-hero-primary"><i class="fas fa-rocket"></i> Créer mon salon — Essai gratuit 30 jours</button></a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo"><i class="fas fa-cut"></i> Créno</div>
+  <p>© 2026 Créno — Logiciel de gestion pour salons de barbier</p>
+  <div class="footer-links">
+    <a href="/pricing">Tarifs</a>
+    <a href="/signup">Essai gratuit</a>
+    <a href="/login">Connexion</a>
   </div>
 </footer>
 
-<script src="/js/app.js"></script>
 </body>
 </html>
