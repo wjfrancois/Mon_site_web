@@ -21,6 +21,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', () => {
   loadTenantInfo();
   loadGallery();
+  loadProducts();
   loadServices();
   loadBarbers();
   initCalendar();
@@ -75,6 +76,95 @@ function openLightbox(url, caption) {
     </div>
   `;
   document.body.appendChild(lb);
+}
+
+// ---- PRODUCTS ----
+let allProducts = [];
+let activeTypeFilter = 'Tous';
+
+async function loadProducts() {
+  try {
+    const res = await fetch(`${API_BASE}/products`);
+    if (!res.ok) return;
+    const products = await res.json();
+    allProducts = products;
+    if (!products.length) return;
+
+    // Section MARQUE (groupé par marque)
+    const marqueSection = document.getElementById('marque');
+    const byBrandEl = document.getElementById('productsByBrand');
+    if (marqueSection && byBrandEl) {
+      renderProductsByBrand(products, byBrandEl);
+      marqueSection.style.display = 'block';
+    }
+
+    // Section PRODUITS (filtrable par type)
+    const produitsSection = document.getElementById('produits');
+    const filtersEl = document.getElementById('productTypeFilters');
+    const byTypeEl = document.getElementById('productsByType');
+    if (produitsSection && filtersEl && byTypeEl) {
+      const types = ['Tous', ...new Set(products.map(p => p.type).filter(Boolean))];
+      filtersEl.innerHTML = types.map(t =>
+        `<button class="product-type-btn${t === activeTypeFilter ? ' active' : ''}" onclick="filterByType('${t}')">${t}</button>`
+      ).join('');
+      renderProductsByType(products, byTypeEl, activeTypeFilter);
+      produitsSection.style.display = 'block';
+    }
+  } catch (e) {}
+}
+
+function renderProductsByBrand(products, container) {
+  const groups = {};
+  products.forEach(p => {
+    const brand = p.brand || 'Autre';
+    if (!groups[brand]) groups[brand] = [];
+    groups[brand].push(p);
+  });
+  container.innerHTML = Object.keys(groups).sort().map(brand => `
+    <div class="products-brand-group">
+      <h3 class="products-brand-title">${brand}</h3>
+      <div class="products-pub-grid">
+        ${groups[brand].map(p => productCardHtml(p)).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterByType(type) {
+  activeTypeFilter = type;
+  document.querySelectorAll('.product-type-btn').forEach(b =>
+    b.classList.toggle('active', b.textContent === type)
+  );
+  const byTypeEl = document.getElementById('productsByType');
+  if (byTypeEl) renderProductsByType(allProducts, byTypeEl, type);
+}
+
+function renderProductsByType(products, container, type) {
+  const filtered = type === 'Tous' ? products : products.filter(p => p.type === type);
+  if (!filtered.length) {
+    container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:2rem">Aucun produit dans cette catégorie.</p>';
+    return;
+  }
+  container.innerHTML = `<div class="products-pub-grid">${filtered.map(p => productCardHtml(p)).join('')}</div>`;
+}
+
+function productCardHtml(p) {
+  return `
+    <div class="product-pub-card">
+      <div class="ppc-photo">
+        ${p.photo_url
+          ? `<img src="${p.photo_url}" alt="${p.name}" loading="lazy">`
+          : `<div class="ppc-no-photo"><i class="fas fa-box-open"></i></div>`}
+      </div>
+      <div class="ppc-info">
+        <div class="ppc-brand">${p.brand || ''}</div>
+        <div class="ppc-name">${p.name}</div>
+        ${p.type ? `<span class="ppc-type">${p.type}</span>` : ''}
+        ${p.description ? `<div class="ppc-desc">${p.description}</div>` : ''}
+        <div class="ppc-price">${parseFloat(p.price).toFixed(2)} $</div>
+      </div>
+    </div>
+  `;
 }
 
 // ---- TENANT INFO ----
@@ -146,27 +236,7 @@ async function loadTenantInfo() {
     if (headerSocials) headerSocials.innerHTML = socialHtml;
     if (footerSocials) footerSocials.innerHTML = socialHtml;
 
-    // Section Marque
-    if (info.about_text) {
-      const marqueSection = document.getElementById('marque');
-      const marqueText = document.getElementById('marqueText');
-      if (marqueSection) marqueSection.style.display = 'block';
-      if (marqueText) marqueText.textContent = info.about_text;
-      if (info.banner_url) {
-        const wrap = document.getElementById('marqueBannerWrap');
-        const img = document.getElementById('marqueBanner');
-        if (wrap) wrap.style.display = 'block';
-        if (img) img.src = info.banner_url;
-      }
-    }
-
-    // Section Produits
-    if (info.products_text) {
-      const produitsSection = document.getElementById('produits');
-      const produitsContent = document.getElementById('produitsContent');
-      if (produitsSection) produitsSection.style.display = 'block';
-      if (produitsContent) produitsContent.textContent = info.products_text;
-    }
+    // Sections marque/produits sont remplies par loadProducts()
   } catch (e) {
     console.error('loadTenantInfo error:', e);
   }

@@ -247,4 +247,22 @@ db.exec(`
   if (!sc.includes('icon')) try { db.exec(`ALTER TABLE services ADD COLUMN icon TEXT DEFAULT 'fas fa-cut'`); } catch(e) {}
 }
 
+// Migration: table produits
+db.exec(`
+  CREATE TABLE IF NOT EXISTS products (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    brand TEXT,
+    type TEXT,
+    price REAL DEFAULT 0,
+    photo_url TEXT,
+    description TEXT,
+    active INTEGER DEFAULT 1,
+    position INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+  );
+`);
+
 module.exports = db;

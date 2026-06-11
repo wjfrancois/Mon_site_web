@@ -1109,3 +1109,103 @@ body {
 }
 .icon-opt:hover { border-color: var(--accent); color: var(--accent); }
 .icon-opt.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, white); color: var(--accent); }
+
+/* ---- Products admin ---- */
+.modal-lg { max-width: 680px; }
+.products-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+.product-admin-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.15s;
+}
+.product-admin-card:hover { box-shadow: var(--shadow); }
+.pac-photo { height: 140px; overflow: hidden; cursor: pointer; background: var(--surface); }
+.pac-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.2s; }
+.pac-photo img:hover { transform: scale(1.04); }
+.pac-no-photo { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-light); font-size: 2rem; cursor: pointer; }
+.pac-info { padding: 0.75rem; flex: 1; }
+.pac-name { font-weight: 600; font-size: 0.875rem; color: var(--primary); }
+.pac-meta { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+.pac-price { font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-top: 0.3rem; }
+.pac-actions { padding: 0.5rem 0.75rem; display: flex; gap: 0.4rem; border-top: 1px solid var(--border); background: var(--surface); }
+
+.product-photo-zone {
+  width: 140px;
+  height: 140px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.product-photo-zone:hover { border-color: var(--accent); }
+#productPhotoPlaceholder { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; pointer-events: none; }
+
+/* ---- Products public (booking page) ---- */
+.products-brand-group { margin-bottom: 3rem; }
+.products-brand-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  color: var(--primary);
+  margin-bottom: 1rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--border);
+}
+.products-pub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.product-pub-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.product-pub-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); transform: translateY(-2px); }
+.ppc-photo { height: 160px; background: var(--surface); overflow: hidden; }
+.ppc-photo img { width: 100%; height: 100%; object-fit: cover; }
+.ppc-no-photo { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: var(--border); }
+.ppc-info { padding: 0.875rem; }
+.ppc-brand { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); margin-bottom: 2px; }
+.ppc-name { font-weight: 600; font-size: 0.9rem; color: var(--primary); margin-bottom: 4px; }
+.ppc-type { display: inline-block; font-size: 0.7rem; background: var(--surface); color: var(--text-light); border-radius: 4px; padding: 2px 6px; margin-bottom: 4px; }
+.ppc-desc { font-size: 0.78rem; color: var(--text-light); margin-bottom: 6px; line-height: 1.4; }
+.ppc-price { font-size: 1rem; font-weight: 700; color: var(--accent); }
+
+.product-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.product-type-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: white;
+  color: var(--text-light);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.product-type-btn:hover { border-color: var(--accent); color: var(--accent); }
+.product-type-btn.active { background: var(--accent); border-color: var(--accent); color: white; font-weight: 600; }
+
+@media (max-width: 600px) {
+  .products-admin-grid { grid-template-columns: repeat(2, 1fr); }
+  .products-pub-grid { grid-template-columns: repeat(2, 1fr); }
+}

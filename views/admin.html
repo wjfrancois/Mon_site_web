@@ -49,6 +49,9 @@
     <a href="#" class="nav-item" data-page="reports">
       <i class="fas fa-file-chart-column"></i><span>Rapports</span>
     </a>
+    <a href="#" class="nav-item" data-page="products">
+      <i class="fas fa-box-open"></i><span>Produits</span>
+    </a>
     <a href="#" class="nav-item" data-page="services">
       <i class="fas fa-scissors"></i><span>Services</span>
     </a>
@@ -366,6 +369,17 @@
     </div>
 
     <!-- SETTINGS -->
+    <!-- PRODUITS -->
+    <div id="page-products" class="page-section hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-box-open"></i> Catalogue produits</h3>
+          <button class="btn btn-sm btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> Nouveau produit</button>
+        </div>
+        <div id="productsAdminGrid" class="products-admin-grid"></div>
+      </div>
+    </div>
+
     <!-- SERVICES -->
     <div id="page-services" class="page-section hidden">
       <div class="card">
@@ -874,6 +888,58 @@
     <div class="form-group">
       <label>Couleur d'agenda</label>
       <input type="color" id="editBarberColor" class="form-input" value="#3B82F6">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Product Modal -->
+<div class="modal modal-lg" id="productModal">
+  <div class="modal-header">
+    <h3 id="productModalTitle">Nouveau produit</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="productForm" class="modal-body">
+    <input type="hidden" id="editProductId">
+    <div style="display:grid;grid-template-columns:160px 1fr;gap:1.5rem;align-items:start">
+      <!-- Photo zone -->
+      <div>
+        <label style="font-size:0.8rem;font-weight:500;color:var(--text-light);display:block;margin-bottom:0.4rem">Photo</label>
+        <div class="product-photo-zone" id="productPhotoZone" onclick="document.getElementById('productPhotoInput').click()">
+          <img id="productPhotoPreview" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:8px">
+          <div id="productPhotoPlaceholder"><i class="fas fa-camera" style="font-size:1.5rem;color:var(--text-light)"></i><br><small style="color:var(--text-light)">Cliquer</small></div>
+        </div>
+        <input type="file" id="productPhotoInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="previewProductPhoto(this)">
+      </div>
+      <!-- Fields -->
+      <div>
+        <div class="form-group">
+          <label>Nom du produit *</label>
+          <input type="text" id="editProductName" class="form-input" required placeholder="Ex: Pomade mate">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Marque</label>
+            <input type="text" id="editProductBrand" class="form-input" placeholder="Ex: American Crew">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <input type="text" id="editProductType" class="form-input" placeholder="Ex: Cire, Shampoing…" list="productTypeList">
+            <datalist id="productTypeList"></datalist>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Prix ($)</label>
+          <input type="number" id="editProductPrice" class="form-input" step="0.01" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label>Description (optionnel)</label>
+          <textarea id="editProductDescription" class="form-input" rows="2" placeholder="Courte description du produit…"></textarea>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>

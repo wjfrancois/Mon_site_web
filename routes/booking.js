@@ -44,6 +44,14 @@ router.get('/:slug/gallery', (req, res) => {
   res.json(db.prepare('SELECT id, url, caption FROM gallery WHERE tenant_id = ? ORDER BY position ASC, created_at ASC').all(t.id));
 });
 
+// GET /api/book/:slug/products
+router.get('/:slug/products', (req, res) => {
+  const tenant = db.prepare('SELECT id FROM tenants WHERE slug = ?').get(req.params.slug);
+  if (!tenant) return res.status(404).json({ error: 'Salon introuvable' });
+  const products = db.prepare('SELECT * FROM products WHERE tenant_id = ? AND active = 1 ORDER BY position ASC, created_at ASC').all(tenant.id);
+  res.json(products);
+});
+
 // GET /api/book/:slug/slots?date=&barber_id=&service_id=
 // barber_id=0 ou absent = n'importe lequel
 router.get('/:slug/slots', (req, res) => {

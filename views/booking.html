@@ -66,25 +66,22 @@
   </div>
 </section>
 
-<!-- MARQUE -->
+<!-- MARQUE (produits groupés par marque) -->
 <section id="marque" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
-  <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center">
-    <div>
-      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:1rem;color:var(--primary)" id="marqueTitle">Notre marque</h2>
-      <div id="marqueText" style="color:var(--text-light);line-height:1.8;font-size:0.975rem;white-space:pre-line"></div>
-    </div>
-    <div id="marqueBannerWrap" style="display:none">
-      <img id="marqueBanner" src="" alt="" style="width:100%;border-radius:var(--radius);object-fit:cover;max-height:360px">
-    </div>
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Nos marques</h2>
+    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Découvrez les produits que nous proposons, par marque</p>
+    <div id="productsByBrand"></div>
   </div>
 </section>
 
-<!-- TYPE DE PRODUITS -->
+<!-- TYPE DE PRODUITS (produits groupés par type avec filtres) -->
 <section id="produits" style="display:none;padding:4rem 1.5rem;background:var(--white)">
   <div style="max-width:1100px;margin:0 auto">
     <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Type de produits</h2>
-    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Les produits que nous utilisons</p>
-    <div id="produitsContent" style="color:var(--text);line-height:1.8;font-size:0.975rem;white-space:pre-line;max-width:700px"></div>
+    <p style="color:var(--text-light);margin-bottom:1.5rem;font-size:0.95rem">Les produits que nous utilisons</p>
+    <div id="productTypeFilters" class="product-type-filters"></div>
+    <div id="productsByType"></div>
   </div>
 </section>
 

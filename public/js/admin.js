@@ -135,7 +135,7 @@ function showPage(page) {
   document.getElementById('pageTitle').textContent = pageTitles[page] || page;
   document.getElementById('sidebar').classList.remove('open');
 
-  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, services: loadServicesPage, settings: loadSettings, gallery: loadGallery, customization: loadCustomization, team: loadTeam, billing: loadBilling };
+  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, products: loadProductsPage, services: loadServicesPage, settings: loadSettings, gallery: loadGallery, customization: loadCustomization, team: loadTeam, billing: loadBilling };
   loaders[page]?.();
 }
 
@@ -734,6 +734,88 @@ async function deleteService(id) {
   loadServicesPage();
 }
 
+// ---- PRODUITS ----
+async function loadProductsPage() {
+  const res = await authFetch(`${API}/api/admin/products`);
+  if (!res?.ok) return;
+  const products = await res.json();
+  const grid = document.getElementById('productsAdminGrid');
+  if (!grid) return;
+
+  // Build datalist options for type autocomplete
+  const types = [...new Set(products.map(p => p.type).filter(Boolean))];
+  document.getElementById('productTypeList').innerHTML = types.map(t => `<option value="${t}">`).join('');
+
+  if (!products.length) {
+    grid.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:3rem">Aucun produit. Cliquez sur « Nouveau produit » pour commencer.</p>';
+    return;
+  }
+  grid.innerHTML = products.map(p => `
+    <div class="product-admin-card">
+      <div class="pac-photo">
+        ${p.photo_url
+          ? `<img src="${p.photo_url}" alt="${p.name}" onclick="openProductModal(${p.id})">`
+          : `<div class="pac-no-photo" onclick="openProductModal(${p.id})"><i class="fas fa-box-open"></i></div>`}
+      </div>
+      <div class="pac-info">
+        <div class="pac-name">${p.name}</div>
+        <div class="pac-meta">${[p.brand, p.type].filter(Boolean).join(' · ')}</div>
+        <div class="pac-price">${parseFloat(p.price).toFixed(2)} $</div>
+      </div>
+      <div class="pac-actions">
+        <button class="btn btn-sm btn-outline" onclick="openProductModal(${p.id})"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openProductModal(id) {
+  document.getElementById('editProductId').value = id || '';
+  document.getElementById('productModalTitle').textContent = id ? 'Modifier le produit' : 'Nouveau produit';
+  document.getElementById('productForm').reset();
+  document.getElementById('productPhotoPreview').style.display = 'none';
+  document.getElementById('productPhotoPlaceholder').style.display = 'flex';
+  document.getElementById('productPhotoInput').value = '';
+
+  if (id) {
+    const products = await authFetch(`${API}/api/admin/products`).then(r => r.json());
+    const p = products.find(x => x.id === id);
+    if (p) {
+      document.getElementById('editProductName').value = p.name || '';
+      document.getElementById('editProductBrand').value = p.brand || '';
+      document.getElementById('editProductType').value = p.type || '';
+      document.getElementById('editProductPrice').value = p.price || 0;
+      document.getElementById('editProductDescription').value = p.description || '';
+      if (p.photo_url) {
+        document.getElementById('productPhotoPreview').src = p.photo_url;
+        document.getElementById('productPhotoPreview').style.display = 'block';
+        document.getElementById('productPhotoPlaceholder').style.display = 'none';
+      }
+    }
+  }
+  openModal('productModal');
+}
+
+function previewProductPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('productPhotoPreview').src = e.target.result;
+    document.getElementById('productPhotoPreview').style.display = 'block';
+    document.getElementById('productPhotoPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Supprimer ce produit définitivement ?')) return;
+  await authFetch(`${API}/api/admin/products/${id}`, { method: 'DELETE' });
+  showToast('Produit supprimé', 'success');
+  loadProductsPage();
+}
+
 async function loadServicesPage() {
   const res = await authFetch(`${API}/api/services`);
   if (!res?.ok) return;
@@ -952,6 +1034,53 @@ function setupModalForms() {
     const method = id ? 'PUT' : 'POST';
     await authFetch(url, { method, body: JSON.stringify(body) });
     showToast(id ? 'Barbier mis à jour' : 'Barbier ajouté', 'success'); closeAllModals(); loadSettings();
+  });
+
+  document.getElementById('productForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('editProductId').value;
+    const photoInput = document.getElementById('productPhotoInput');
+    const formData = new FormData();
+    if (photoInput.files[0]) formData.append('photo', photoInput.files[0]);
+    formData.append('name', document.getElementById('editProductName').value);
+    formData.append('brand', document.getElementById('editProductBrand').value);
+    formData.append('type', document.getElementById('editProductType').value);
+    formData.append('price', document.getElementById('editProductPrice').value);
+    formData.append('description', document.getElementById('editProductDescription').value);
+
+    const token = localStorage.getItem('token');
+    if (id) {
+      // Update text fields first
+      await authFetch(`${API}/api/admin/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: document.getElementById('editProductName').value,
+          brand: document.getElementById('editProductBrand').value,
+          type: document.getElementById('editProductType').value,
+          price: parseFloat(document.getElementById('editProductPrice').value),
+          description: document.getElementById('editProductDescription').value
+        })
+      });
+      // Replace photo if a new file was chosen
+      if (photoInput.files[0]) {
+        const pf = new FormData();
+        pf.append('photo', photoInput.files[0]);
+        await fetch(`${API}/api/admin/products/${id}/photo`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${token}` },
+          body: pf
+        });
+      }
+    } else {
+      await fetch(`${API}/api/admin/products`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+    }
+    showToast(id ? 'Produit mis à jour' : 'Produit ajouté', 'success');
+    closeAllModals();
+    loadProductsPage();
   });
 
   document.getElementById('serviceForm').addEventListener('submit', async e => {
