@@ -411,10 +411,12 @@ async function deleteReminder(id) {
 // ---- ACCOUNTING ----
 async function loadAccounting() {
   const period = document.getElementById('accountingPeriod').value;
-  const [summary, transactions] = await Promise.all([
-    fetch(`${API}/api/accounting/summary?period=${period}`).then(r => r.json()),
-    fetch(`${API}/api/accounting/transactions?${periodToMonthParam(period)}`).then(r => r.json())
+  const [summaryRes, transactionsRes] = await Promise.all([
+    authFetch(`/api/accounting/summary?period=${period}`),
+    authFetch(`/api/accounting/transactions?${periodToMonthParam(period)}`)
   ]);
+  if (!summaryRes?.ok || !transactionsRes?.ok) return;
+  const [summary, transactions] = await Promise.all([summaryRes.json(), transactionsRes.json()]);
 
   document.getElementById('accountingSummary').innerHTML = `
     <div class="acc-card acc-income"><span class="label">Revenus</span><span class="value">${summary.total_income.toFixed(2)} $</span></div>
@@ -930,12 +932,12 @@ async function loadCustomization() {
   if (urlEl) { urlEl.textContent = c.public_url; urlEl.href = c.public_url; }
   window._tenantBookingUrl = c.public_url;
 
-  const colorInput = document.getElementById('primaryColorInput');
+  const colorInput = document.getElementById('customColor');
   const colorPreview = document.getElementById('colorPreview');
   if (colorInput) { colorInput.value = c.primary_color || '#e2b04a'; }
   if (colorPreview) colorPreview.style.background = c.primary_color || '#e2b04a';
 
-  const fields = { custHeroTag: c.hero_tag, custHeroTitle: c.hero_title, custHeroSubtitle: c.hero_subtitle, custSalonName: c.name, custSalonPhone: c.phone, custSalonAddress: c.address };
+  const fields = { customHeroTag: c.hero_tag, customHeroTitle: c.hero_title, customHeroSubtitle: c.hero_subtitle, customSalonName: c.name, customSalonPhone: c.phone, customSalonAddress: c.address, customSalonEmail: c.email };
   Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
 
   renderImageZone('logoPreviewWrap', c.logo_url, 'logo');
@@ -946,10 +948,12 @@ async function loadCustomization() {
 function renderImageZone(wrapperId, url, type) {
   const wrap = document.getElementById(wrapperId);
   if (!wrap) return;
+  const inputIdMap = { logo: 'logoInput', banner: 'bannerInput', 'hero-photo': 'heroPhotoInput' };
+  const inputId = inputIdMap[type] || `${type}Input`;
   if (url) {
     wrap.innerHTML = `<img src="${url}" class="custom-image-preview" alt=""><button class="btn btn-sm btn-danger" style="margin:0.5rem" onclick="deleteCustomImage('${type}')"><i class="fas fa-trash"></i> Supprimer</button>`;
   } else {
-    wrap.innerHTML = `<div class="custom-image-placeholder" onclick="document.getElementById('${type}Input').click()"><i class="fas fa-image"></i><span>Cliquer pour uploader</span></div>`;
+    wrap.innerHTML = `<div class="custom-image-placeholder" onclick="document.getElementById('${inputId}').click()"><i class="fas fa-image"></i><span>Cliquer pour uploader</span></div>`;
   }
 }
 
@@ -971,16 +975,29 @@ async function deleteCustomImage(type) {
 
 async function saveCustomizationTexts() {
   const body = {
-    primary_color: document.getElementById('primaryColorInput')?.value,
-    hero_tag: document.getElementById('custHeroTag')?.value,
-    hero_title: document.getElementById('custHeroTitle')?.value,
-    hero_subtitle: document.getElementById('custHeroSubtitle')?.value,
-    name: document.getElementById('custSalonName')?.value,
-    phone: document.getElementById('custSalonPhone')?.value,
-    address: document.getElementById('custSalonAddress')?.value
+    hero_tag: document.getElementById('customHeroTag')?.value,
+    hero_title: document.getElementById('customHeroTitle')?.value,
+    hero_subtitle: document.getElementById('customHeroSubtitle')?.value
   };
   const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
-  if (res?.ok) showToast('Personnalisation sauvegardée', 'success');
+  if (res?.ok) showToast('Textes sauvegardés', 'success');
+}
+
+async function saveCustomizationInfo() {
+  const body = {
+    name: document.getElementById('customSalonName')?.value,
+    phone: document.getElementById('customSalonPhone')?.value,
+    address: document.getElementById('customSalonAddress')?.value,
+    email: document.getElementById('customSalonEmail')?.value
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Informations sauvegardées', 'success');
+}
+
+async function saveCustomizationColor() {
+  const color = document.getElementById('customColor')?.value;
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify({ primary_color: color }) });
+  if (res?.ok) showToast('Couleur appliquée', 'success');
 }
 
 function copyBookingUrl() {
@@ -1059,6 +1076,13 @@ async function openStripePortal() {
   const res = await authFetch('/api/admin/billing/portal', { method: 'POST', body: JSON.stringify({}) });
   if (res?.ok) { const { url } = await res.json(); if (url) window.location.href = url; }
   else showToast('Portail Stripe non configuré', 'warning');
+}
+
+async function subscribeToPlan(plan) {
+  if (!confirm(`Passer au plan ${plan} ?`)) return;
+  const res = await authFetch('/api/admin/billing/checkout', { method: 'POST', body: JSON.stringify({ plan }) });
+  if (res?.ok) { const { url } = await res.json(); if (url) window.location.href = url; }
+  else showToast('Erreur lors du checkout', 'error');
 }
 
 function showTrialBanner(daysLeft) {
