@@ -33,11 +33,14 @@ router.get('/', (req, res) => {
   });
 });
 
-// PUT /api/admin/customization (textes, couleur, infos salon)
+// PUT /api/admin/customization — mise à jour partielle (seuls les champs envoyés sont modifiés)
 router.put('/', (req, res) => {
-  const { primary_color, hero_title, hero_subtitle, hero_tag, name, phone, address } = req.body;
-  db.prepare('UPDATE tenants SET primary_color=?, hero_title=?, hero_subtitle=?, hero_tag=?, name=?, phone=?, address=? WHERE id=?')
-    .run(primary_color, hero_title, hero_subtitle, hero_tag, name, phone, address, req.tenantId);
+  const allowed = ['primary_color', 'hero_title', 'hero_subtitle', 'hero_tag', 'name', 'phone', 'address'];
+  const toUpdate = {};
+  allowed.forEach(k => { if (req.body[k] !== undefined) toUpdate[k] = req.body[k]; });
+  if (!Object.keys(toUpdate).length) return res.json({ message: 'Rien à mettre à jour' });
+  const sets = Object.keys(toUpdate).map(k => `${k} = ?`).join(', ');
+  db.prepare(`UPDATE tenants SET ${sets} WHERE id = ?`).run(...Object.values(toUpdate), req.tenantId);
   res.json({ message: 'Personnalisation mise à jour' });
 });
 

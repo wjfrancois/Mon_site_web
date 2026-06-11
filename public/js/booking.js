@@ -66,7 +66,7 @@ async function loadTenantInfo() {
     }
     if (info.hero_title) {
       const titleEl = document.getElementById('heroTitle');
-      if (titleEl) titleEl.innerHTML = info.hero_title.replace(/(Fenix|Barbier|salon)/gi, '<span>$&</span>');
+      if (titleEl) titleEl.textContent = info.hero_title;
     }
     if (info.hero_subtitle) {
       const subtitleEl = document.getElementById('heroSubtitle');
