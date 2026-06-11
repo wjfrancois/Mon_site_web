@@ -81,7 +81,7 @@ app.get('/api/admin/me', requireAuth, (req, res) => {
 });
 
 // === PAGES HTML ===
-app.get('/admin', requireAuth, (req, res) => res.sendFile(path.join(VIEWS, 'admin.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(VIEWS, 'admin.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(VIEWS, 'login.html')));
 app.get('/signup', (req, res) => res.sendFile(path.join(VIEWS, 'onboarding.html')));
 app.get('/pricing', (req, res) => res.sendFile(path.join(VIEWS, 'pricing.html')));
