@@ -205,4 +205,19 @@ if (tenantCount.c === 0) {
     });
 }
 
+// Migration: seed horaires par défaut pour les barbiers sans horaires
+{
+  const barbersWithNoHours = db.prepare(`
+    SELECT b.id, b.tenant_id FROM barbers b
+    WHERE b.active = 1
+      AND NOT EXISTS (SELECT 1 FROM working_hours wh WHERE wh.barber_id = b.id)
+  `).all();
+  const insH = db.prepare('INSERT OR IGNORE INTO working_hours (barber_id, day_of_week, start_time, end_time, is_closed, tenant_id) VALUES (?, ?, ?, ?, ?, ?)');
+  const defaultSchedule = [[0,'10:00','17:00',0],[1,'09:00','18:00',0],[2,'09:00','18:00',0],[3,'09:00','18:00',0],[4,'09:00','18:00',0],[5,'09:00','18:00',0],[6,'10:00','17:00',0]];
+  const tx = db.transaction(() => {
+    barbersWithNoHours.forEach(b => defaultSchedule.forEach(([d,s,e,c]) => insH.run(b.id, d, s, e, c, b.tenant_id)));
+  });
+  tx();
+}
+
 module.exports = db;

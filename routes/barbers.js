@@ -18,7 +18,14 @@ router.post('/', guardBarberLimit, (req, res) => {
   if (!name) return res.status(400).json({ error: 'Nom obligatoire' });
   const tenantId = req.tenantId || 1;
   const result = db.prepare('INSERT INTO barbers (name, email, phone, color, tenant_id) VALUES (?, ?, ?, ?, ?)').run(name, email || null, phone || null, color || '#3B82F6', tenantId);
-  res.json({ id: result.lastInsertRowid });
+  const bid = result.lastInsertRowid;
+  const insH = db.prepare('INSERT OR IGNORE INTO working_hours (barber_id, day_of_week, start_time, end_time, is_closed, tenant_id) VALUES (?, ?, ?, ?, ?, ?)');
+  const tx = db.transaction(() => {
+    [[0,'10:00','17:00',0],[1,'09:00','18:00',0],[2,'09:00','18:00',0],[3,'09:00','18:00',0],[4,'09:00','18:00',0],[5,'09:00','18:00',0],[6,'10:00','17:00',0]]
+      .forEach(([d,s,e,c]) => insH.run(bid, d, s, e, c, tenantId));
+  });
+  tx();
+  res.json({ id: bid });
 });
 
 router.put('/:id', (req, res) => {

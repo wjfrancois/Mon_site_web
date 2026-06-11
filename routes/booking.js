@@ -36,40 +36,63 @@ router.get('/:slug/barbers', (req, res) => {
 });
 
 // GET /api/book/:slug/slots?date=&barber_id=&service_id=
+// barber_id=0 ou absent = n'importe lequel
 router.get('/:slug/slots', (req, res) => {
   const t = getTenant(req.params.slug);
   if (!t) return res.status(404).json({ error: 'Salon introuvable' });
   const { date, barber_id, service_id } = req.query;
-  if (!date || !barber_id || !service_id) return res.status(400).json({ error: 'Paramètres manquants' });
+  if (!date || !service_id) return res.status(400).json({ error: 'Paramètres manquants' });
 
   const service = db.prepare('SELECT duration FROM services WHERE id = ? AND tenant_id = ?').get(service_id, t.id);
   if (!service) return res.status(404).json({ error: 'Service introuvable' });
 
   const dayOfWeek = new Date(date + 'T12:00:00').getDay();
-  const hours = db.prepare('SELECT * FROM working_hours WHERE barber_id = ? AND day_of_week = ? AND tenant_id = ?').get(barber_id, dayOfWeek, t.id);
-  if (!hours || hours.is_closed) return res.json({ slots: [], closed: true });
+  const anyBarber = !barber_id || barber_id === '0';
+  const barbers = anyBarber
+    ? db.prepare('SELECT id FROM barbers WHERE tenant_id = ? AND active = 1').all(t.id)
+    : [{ id: Number(barber_id) }];
 
-  const existing = db.prepare(`
-    SELECT a.time, s.duration FROM appointments a
-    JOIN services s ON a.service_id = s.id
-    WHERE a.date = ? AND a.barber_id = ? AND a.tenant_id = ? AND a.status != 'cancelled'
-  `).all(date, barber_id, t.id);
+  if (!barbers.length) return res.json({ slots: [], closed: true });
 
-  const slots = [];
-  const [sh, sm] = hours.start_time.split(':').map(Number);
-  const [eh, em] = hours.end_time.split(':').map(Number);
-  const startMin = sh*60+sm, endMin = eh*60+em;
+  // slot -> [barber_id, ...] (which barbers are free at each slot)
+  const slotMap = {};
 
-  for (let min = startMin; min + service.duration <= endMin; min += 15) {
-    const slotEnd = min + service.duration;
-    const conflict = existing.some(a => {
-      const [ah, am] = a.time.split(':').map(Number);
-      const as_ = ah*60+am, ae = as_ + a.duration;
-      return min < ae && slotEnd > as_;
-    });
-    if (!conflict) slots.push(`${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`);
+  for (const barber of barbers) {
+    const hours = db.prepare('SELECT * FROM working_hours WHERE barber_id = ? AND day_of_week = ? AND tenant_id = ?').get(barber.id, dayOfWeek, t.id);
+    if (!hours || hours.is_closed) continue;
+
+    const existing = db.prepare(`
+      SELECT a.time, s.duration FROM appointments a
+      JOIN services s ON a.service_id = s.id
+      WHERE a.date = ? AND a.barber_id = ? AND a.tenant_id = ? AND a.status != 'cancelled'
+    `).all(date, barber.id, t.id);
+
+    const [sh, sm] = hours.start_time.split(':').map(Number);
+    const [eh, em] = hours.end_time.split(':').map(Number);
+    const startMin = sh*60+sm, endMin = eh*60+em;
+
+    for (let min = startMin; min + service.duration <= endMin; min += 15) {
+      const slotEnd = min + service.duration;
+      const conflict = existing.some(a => {
+        const [ah, am] = a.time.split(':').map(Number);
+        const as_ = ah*60+am, ae = as_ + a.duration;
+        return min < ae && slotEnd > as_;
+      });
+      if (!conflict) {
+        const key = `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
+        if (!slotMap[key]) slotMap[key] = [];
+        slotMap[key].push(barber.id);
+      }
+    }
   }
-  res.json({ slots, working_hours: hours });
+
+  const slots = Object.keys(slotMap).sort();
+  if (!slots.length && barbers.every(b => {
+    const h = db.prepare('SELECT * FROM working_hours WHERE barber_id = ? AND day_of_week = ? AND tenant_id = ?').get(b.id, dayOfWeek, t.id);
+    return !h || h.is_closed;
+  })) return res.json({ slots: [], closed: true });
+
+  res.json({ slots, slot_barbers: anyBarber ? slotMap : undefined });
 });
 
 // POST /api/book/:slug/appointments
@@ -77,9 +100,28 @@ router.post('/:slug/appointments', async (req, res) => {
   const t = getTenant(req.params.slug);
   if (!t) return res.status(404).json({ error: 'Salon introuvable' });
 
-  const { client_name, client_phone, client_email, barber_id, service_id, date, time, notes } = req.body;
-  if (!client_name || !client_phone || !barber_id || !service_id || !date || !time) {
+  let { client_name, client_phone, client_email, barber_id, service_id, date, time, notes } = req.body;
+  if (!client_name || !client_phone || !service_id || !date || !time) {
     return res.status(400).json({ error: 'Champs obligatoires manquants' });
+  }
+
+  const service = db.prepare('SELECT * FROM services WHERE id = ? AND tenant_id = ?').get(service_id, t.id);
+  if (!service) return res.status(404).json({ error: 'Service introuvable' });
+
+  // Auto-assign barber si "n'importe lequel"
+  if (!barber_id) {
+    const dayOfWeek = new Date(date + 'T12:00:00').getDay();
+    const [rh, rm] = time.split(':').map(Number);
+    const reqStart = rh*60+rm, reqEnd = reqStart + service.duration;
+    const candidates = db.prepare('SELECT id FROM barbers WHERE tenant_id = ? AND active = 1').all(t.id);
+    for (const c of candidates) {
+      const h = db.prepare('SELECT * FROM working_hours WHERE barber_id = ? AND day_of_week = ? AND is_closed = 0 AND tenant_id = ?').get(c.id, dayOfWeek, t.id);
+      if (!h) continue;
+      const conflicts = db.prepare(`SELECT a.time, s.duration FROM appointments a JOIN services s ON a.service_id=s.id WHERE a.date=? AND a.barber_id=? AND a.tenant_id=? AND a.status!='cancelled'`).all(date, c.id, t.id);
+      const busy = conflicts.some(a => { const [ah,am]=a.time.split(':').map(Number),as_=ah*60+am,ae=as_+a.duration; return reqStart<ae&&reqEnd>as_; });
+      if (!busy) { barber_id = c.id; break; }
+    }
+    if (!barber_id) return res.status(409).json({ error: 'Aucun barbier disponible pour ce créneau' });
   }
 
   let client = db.prepare('SELECT * FROM clients WHERE phone = ? AND tenant_id = ?').get(client_phone, t.id);
@@ -88,9 +130,8 @@ router.post('/:slug/appointments', async (req, res) => {
     client = { id: r.lastInsertRowid };
   }
 
-  const service = db.prepare('SELECT * FROM services WHERE id = ? AND tenant_id = ?').get(service_id, t.id);
   const barber = db.prepare('SELECT * FROM barbers WHERE id = ? AND tenant_id = ?').get(barber_id, t.id);
-  if (!service || !barber) return res.status(404).json({ error: 'Service ou barbier introuvable' });
+  if (!barber) return res.status(404).json({ error: 'Barbier introuvable' });
 
   const appt = db.prepare('INSERT INTO appointments (client_id, barber_id, service_id, date, time, notes, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(client.id, barber_id, service_id, date, time, notes || null, t.id);
 

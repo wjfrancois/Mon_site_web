@@ -236,7 +236,7 @@ async function selectDate(dateStr) {
 
   try {
     const params = new URLSearchParams({ date: dateStr });
-    if (state.selectedBarber && state.selectedBarber !== 'any') params.set('barber_id', state.selectedBarber);
+    params.set('barber_id', state.selectedBarber === 'any' ? 0 : state.selectedBarber);
     if (state.selectedService) params.set('service_id', state.selectedService);
 
     const res = await fetch(`${API_BASE}/slots?${params}`);
