@@ -82,6 +82,10 @@ function openLightbox(url, caption) {
 let allProducts = [];
 let activeTypeFilter = 'Tous';
 
+function brandSlug(brand) {
+  return brand.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+}
+
 async function loadProducts() {
   try {
     const res = await fetch(`${API_BASE}/products`);
@@ -89,6 +93,25 @@ async function loadProducts() {
     const products = await res.json();
     allProducts = products;
     if (!products.length) return;
+
+    const brands = [...new Set(products.map(p => p.brand || 'Autre'))].sort();
+    const types  = [...new Set(products.map(p => p.type).filter(Boolean))];
+
+    // Peupler le dropdown Marque
+    const brandDd = document.getElementById('brandDropdown');
+    if (brandDd) {
+      brandDd.innerHTML = brands.map(b =>
+        `<a class="bnav-dropdown-item" href="#marque" onclick="scrollToBrand('${brandSlug(b)}')">${b}</a>`
+      ).join('');
+    }
+
+    // Peupler le dropdown Type de produits
+    const typeDd = document.getElementById('typeDropdown');
+    if (typeDd) {
+      typeDd.innerHTML = [`<a class="bnav-dropdown-item" href="#produits" onclick="filterByType('Tous')">Tous</a>`,
+        ...types.map(t => `<a class="bnav-dropdown-item" href="#produits" onclick="filterByType('${t.replace(/'/g,"\\'")}')"> ${t}</a>`)
+      ].join('');
+    }
 
     // Section MARQUE (groupé par marque)
     const marqueSection = document.getElementById('marque');
@@ -103,14 +126,20 @@ async function loadProducts() {
     const filtersEl = document.getElementById('productTypeFilters');
     const byTypeEl = document.getElementById('productsByType');
     if (produitsSection && filtersEl && byTypeEl) {
-      const types = ['Tous', ...new Set(products.map(p => p.type).filter(Boolean))];
-      filtersEl.innerHTML = types.map(t =>
-        `<button class="product-type-btn${t === activeTypeFilter ? ' active' : ''}" onclick="filterByType('${t}')">${t}</button>`
+      filtersEl.innerHTML = ['Tous', ...types].map(t =>
+        `<button class="product-type-btn${t === activeTypeFilter ? ' active' : ''}" onclick="filterByType('${t.replace(/'/g,"\\'")}')"> ${t}</button>`
       ).join('');
       renderProductsByType(products, byTypeEl, activeTypeFilter);
       produitsSection.style.display = 'block';
     }
   } catch (e) {}
+}
+
+function scrollToBrand(slug) {
+  setTimeout(() => {
+    const el = document.getElementById('brand-' + slug);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
 }
 
 function renderProductsByBrand(products, container) {
@@ -121,7 +150,7 @@ function renderProductsByBrand(products, container) {
     groups[brand].push(p);
   });
   container.innerHTML = Object.keys(groups).sort().map(brand => `
-    <div class="products-brand-group">
+    <div class="products-brand-group" id="brand-${brandSlug(brand)}">
       <h3 class="products-brand-title">${brand}</h3>
       <div class="products-pub-grid">
         ${groups[brand].map(p => productCardHtml(p)).join('')}
@@ -133,10 +162,13 @@ function renderProductsByBrand(products, container) {
 function filterByType(type) {
   activeTypeFilter = type;
   document.querySelectorAll('.product-type-btn').forEach(b =>
-    b.classList.toggle('active', b.textContent === type)
+    b.classList.toggle('active', b.textContent.trim() === type)
   );
   const byTypeEl = document.getElementById('productsByType');
   if (byTypeEl) renderProductsByType(allProducts, byTypeEl, type);
+  setTimeout(() => {
+    document.getElementById('produits')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
 }
 
 function renderProductsByType(products, container, type) {

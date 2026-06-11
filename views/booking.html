@@ -23,10 +23,10 @@
 
 <!-- HEADER -->
 <header class="booking-header" id="bookingHeader">
-  <div style="display:flex;align-items:center;gap:0.75rem">
+  <a href="#accueil" style="display:flex;align-items:center;gap:0.75rem;text-decoration:none">
     <img id="salonLogo" class="salon-logo" src="" alt="Logo" style="display:none">
     <span class="salon-name" id="salonName">Chargement...</span>
-  </div>
+  </a>
   <div id="headerSocials" class="header-socials"></div>
 </header>
 
@@ -34,8 +34,21 @@
 <nav class="booking-nav" id="bookingNav">
   <div class="booking-nav-inner">
     <a href="#accueil" class="bnav-link active" data-section="accueil">Accueil</a>
-    <a href="#marque" class="bnav-link" data-section="marque">Marque</a>
-    <a href="#produits" class="bnav-link" data-section="produits">Type de produits</a>
+
+    <div class="bnav-dropdown">
+      <a href="#marque" class="bnav-link" data-section="marque">Marque <i class="fas fa-chevron-down bnav-caret"></i></a>
+      <div class="bnav-dropdown-menu" id="brandDropdown">
+        <div class="bnav-dropdown-empty">Aucune marque</div>
+      </div>
+    </div>
+
+    <div class="bnav-dropdown">
+      <a href="#produits" class="bnav-link" data-section="produits">Type de produits <i class="fas fa-chevron-down bnav-caret"></i></a>
+      <div class="bnav-dropdown-menu" id="typeDropdown">
+        <div class="bnav-dropdown-empty">Aucun type</div>
+      </div>
+    </div>
+
     <a href="#services" class="bnav-link" data-section="services">Nos services</a>
     <a href="#reservation" class="bnav-link bnav-cta" data-section="reservation">Rendez-vous</a>
   </div>
