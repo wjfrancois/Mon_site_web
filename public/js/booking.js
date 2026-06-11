@@ -191,7 +191,7 @@ function renderServicesShowcase() {
   if (!showcase || !state.services.length) return;
   showcase.innerHTML = state.services.map(s => `
     <div class="service-showcase-card">
-      <div class="ssc-icon"><i class="fas fa-cut"></i></div>
+      <div class="ssc-icon"><i class="${s.icon || 'fas fa-cut'}"></i></div>
       <div class="ssc-info">
         <h3>${s.name}</h3>
         ${s.description ? `<p>${s.description}</p>` : ''}

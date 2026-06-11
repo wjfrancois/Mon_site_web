@@ -49,6 +49,9 @@
     <a href="#" class="nav-item" data-page="reports">
       <i class="fas fa-file-chart-column"></i><span>Rapports</span>
     </a>
+    <a href="#" class="nav-item" data-page="services">
+      <i class="fas fa-scissors"></i><span>Services</span>
+    </a>
     <a href="#" class="nav-item" data-page="settings">
       <i class="fas fa-cog"></i><span>Paramètres</span>
     </a>
@@ -363,6 +366,17 @@
     </div>
 
     <!-- SETTINGS -->
+    <!-- SERVICES -->
+    <div id="page-services" class="page-section hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-scissors"></i> Mes services</h3>
+          <button class="btn btn-sm btn-primary" onclick="openServiceModal()"><i class="fas fa-plus"></i> Nouveau service</button>
+        </div>
+        <div id="servicesPageList" style="padding:0.5rem 0"></div>
+      </div>
+    </div>
+
     <div id="page-settings" class="page-section hidden">
 
       <!-- Image hero -->
@@ -876,21 +890,39 @@
   </div>
   <form id="serviceForm" class="modal-body">
     <input type="hidden" id="editServiceId">
-    <div class="form-group">
-      <label>Nom *</label>
-      <input type="text" id="editServiceName" class="form-input" required>
+    <input type="hidden" id="editServiceIcon" value="fas fa-cut">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nom *</label>
+        <input type="text" id="editServiceName" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label>Prix ($) *</label>
+        <input type="number" id="editServicePrice" class="form-input" step="0.01" min="0" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Durée (minutes)</label>
+        <input type="number" id="editServiceDuration" class="form-input" value="30" min="15" step="15" required>
+      </div>
+      <div class="form-group">
+        <label>Icône</label>
+        <div class="icon-picker" id="iconPicker">
+          <button type="button" class="icon-opt selected" data-icon="fas fa-cut" title="Coupe"><i class="fas fa-cut"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-scissors" title="Ciseaux"><i class="fas fa-scissors"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-magic" title="Coiffage"><i class="fas fa-magic"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-user-tie" title="Rasage"><i class="fas fa-user-tie"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-spa" title="Soin"><i class="fas fa-spa"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-spray-can" title="Coloration"><i class="fas fa-spray-can"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-shower" title="Lavage"><i class="fas fa-shower"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-star" title="Premium"><i class="fas fa-star"></i></button>
+        </div>
+      </div>
     </div>
     <div class="form-group">
-      <label>Durée (minutes)</label>
-      <input type="number" id="editServiceDuration" class="form-input" value="30" min="15" step="15" required>
-    </div>
-    <div class="form-group">
-      <label>Prix ($)</label>
-      <input type="number" id="editServicePrice" class="form-input" step="0.01" min="0" required>
-    </div>
-    <div class="form-group">
-      <label>Description</label>
-      <textarea id="editServiceDescription" class="form-input" rows="2"></textarea>
+      <label>Description (optionnel)</label>
+      <textarea id="editServiceDescription" class="form-input" rows="2" placeholder="Courte description visible sur la page de réservation..."></textarea>
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>

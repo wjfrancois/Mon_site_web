@@ -1058,3 +1058,54 @@ body {
   .marque-inner { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
   #reservation .booking-wizard { padding: 1.25rem; }
 }
+
+/* ---- Services admin page ---- */
+.service-page-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.service-page-item:last-child { border-bottom: none; }
+.spi-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.spi-info { flex: 1; min-width: 0; }
+.spi-name { font-weight: 600; font-size: 0.9rem; color: var(--primary); }
+.spi-meta { font-size: 0.78rem; color: var(--text-light); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spi-price { font-size: 1rem; font-weight: 700; color: var(--primary); white-space: nowrap; }
+.spi-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+
+/* Icon picker */
+.icon-picker {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+.icon-opt {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-light);
+  transition: all 0.15s;
+}
+.icon-opt:hover { border-color: var(--accent); color: var(--accent); }
+.icon-opt.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, white); color: var(--accent); }

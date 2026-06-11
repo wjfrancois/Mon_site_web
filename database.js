@@ -241,4 +241,10 @@ db.exec(`
   });
 }
 
+// Migration: icône pour les services
+{
+  const sc = db.prepare("PRAGMA table_info(services)").all().map(c => c.name);
+  if (!sc.includes('icon')) try { db.exec(`ALTER TABLE services ADD COLUMN icon TEXT DEFAULT 'fas fa-cut'`); } catch(e) {}
+}
+
 module.exports = db;

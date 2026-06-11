@@ -135,7 +135,7 @@ function showPage(page) {
   document.getElementById('pageTitle').textContent = pageTitles[page] || page;
   document.getElementById('sidebar').classList.remove('open');
 
-  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, settings: loadSettings, gallery: loadGallery, customization: loadCustomization, team: loadTeam, billing: loadBilling };
+  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, services: loadServicesPage, settings: loadSettings, gallery: loadGallery, customization: loadCustomization, team: loadTeam, billing: loadBilling };
   loaders[page]?.();
 }
 
@@ -716,8 +716,8 @@ async function loadSettings() {
   document.getElementById('servicesList').innerHTML = services.map(s => `
     <div class="settings-item">
       <div class="info">
-        <div class="name">${s.name}</div>
-        <div class="meta">${s.duration} min — ${s.price.toFixed(2)} $</div>
+        <div class="name"><i class="${s.icon || 'fas fa-cut'}" style="margin-right:0.4rem;opacity:0.6"></i>${s.name}</div>
+        <div class="meta">${s.duration} min — ${parseFloat(s.price).toFixed(2)} $</div>
       </div>
       <div class="action-btns">
         <button class="btn-table btn-edit" onclick="openServiceModal(${s.id})">Modifier</button>
@@ -728,10 +728,36 @@ async function loadSettings() {
 }
 
 async function deleteService(id) {
-  if (!confirm('Désactiver ce service ?')) return;
+  if (!confirm('Supprimer ce service ?\nIl ne sera plus disponible à la réservation.')) return;
   await authFetch(`${API}/api/services/${id}`, { method: 'DELETE' });
-  showToast('Service désactivé', 'success');
-  loadSettings();
+  showToast('Service supprimé', 'success');
+  loadServicesPage();
+}
+
+async function loadServicesPage() {
+  const res = await authFetch(`${API}/api/services`);
+  if (!res?.ok) return;
+  const services = await res.json();
+  const container = document.getElementById('servicesPageList');
+  if (!container) return;
+  if (!services.length) {
+    container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:2rem">Aucun service. Cliquez sur « Nouveau service » pour commencer.</p>';
+    return;
+  }
+  container.innerHTML = services.map(s => `
+    <div class="service-page-item">
+      <div class="spi-icon"><i class="${s.icon || 'fas fa-cut'}"></i></div>
+      <div class="spi-info">
+        <div class="spi-name">${s.name}</div>
+        <div class="spi-meta">${s.duration} min${s.description ? ' · ' + s.description : ''}</div>
+      </div>
+      <div class="spi-price">${parseFloat(s.price).toFixed(2)} $</div>
+      <div class="spi-actions">
+        <button class="btn btn-sm btn-outline" onclick="openServiceModal(${s.id})"><i class="fas fa-pen"></i> Modifier</button>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteService(${s.id})"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
 }
 
 async function deleteBarber(id, name) {
@@ -837,16 +863,23 @@ async function openBarberModal(id) {
 async function openServiceModal(id) {
   document.getElementById('editServiceId').value = id || '';
   document.getElementById('serviceModalTitle').textContent = id ? 'Modifier service' : 'Nouveau service';
-  if (id) {
-    const services = await authFetch(`${API}/api/services`).then(r => r.json());
-    const s = services.find(x => x.id === id);
-    if (s) {
-      document.getElementById('editServiceName').value = s.name;
-      document.getElementById('editServiceDuration').value = s.duration;
-      document.getElementById('editServicePrice').value = s.price;
-      document.getElementById('editServiceDescription').value = s.description || '';
-    }
-  } else { document.getElementById('serviceForm').reset(); }
+  const icon = id
+    ? (await authFetch(`${API}/api/services`).then(r => r.json()).then(list => {
+        const s = list.find(x => x.id === id);
+        if (s) {
+          document.getElementById('editServiceName').value = s.name;
+          document.getElementById('editServiceDuration').value = s.duration;
+          document.getElementById('editServicePrice').value = s.price;
+          document.getElementById('editServiceDescription').value = s.description || '';
+          return s.icon || 'fas fa-cut';
+        }
+        return 'fas fa-cut';
+      }))
+    : (() => { document.getElementById('serviceForm').reset(); return 'fas fa-cut'; })();
+  document.getElementById('editServiceIcon').value = icon;
+  document.querySelectorAll('#iconPicker .icon-opt').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.icon === icon);
+  });
   openModal('serviceModal');
 }
 
@@ -924,11 +957,29 @@ function setupModalForms() {
   document.getElementById('serviceForm').addEventListener('submit', async e => {
     e.preventDefault();
     const id = document.getElementById('editServiceId').value;
-    const body = { name: document.getElementById('editServiceName').value, duration: parseInt(document.getElementById('editServiceDuration').value), price: parseFloat(document.getElementById('editServicePrice').value), description: document.getElementById('editServiceDescription').value };
+    const body = {
+      name: document.getElementById('editServiceName').value,
+      duration: parseInt(document.getElementById('editServiceDuration').value),
+      price: parseFloat(document.getElementById('editServicePrice').value),
+      description: document.getElementById('editServiceDescription').value,
+      icon: document.getElementById('editServiceIcon').value || 'fas fa-cut'
+    };
     const url = id ? `/api/services/${id}` : '/api/services';
     const method = id ? 'PUT' : 'POST';
     await authFetch(url, { method, body: JSON.stringify(body) });
-    showToast(id ? 'Service mis à jour' : 'Service ajouté', 'success'); closeAllModals(); loadSettings();
+    showToast(id ? 'Service mis à jour' : 'Service ajouté', 'success');
+    closeAllModals();
+    loadServicesPage();
+    if (document.getElementById('page-settings')?.classList.contains('active') ||
+        !document.getElementById('page-settings')?.classList.contains('hidden')) loadSettings();
+  });
+
+  document.getElementById('iconPicker')?.addEventListener('click', e => {
+    const btn = e.target.closest('.icon-opt');
+    if (!btn) return;
+    document.querySelectorAll('#iconPicker .icon-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('editServiceIcon').value = btn.dataset.icon;
   });
 
   const teamFormEl = document.getElementById('teamForm');
