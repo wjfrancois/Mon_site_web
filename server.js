@@ -51,8 +51,7 @@ app.get('/api/barbers', (req, res, next) => {
   res.json(rows);
 });
 
-// Slots publics (legacy pour index.html)
-app.use('/api/appointments', require('./routes/appointments'));
+app.use('/api/appointments', requireAuth, require('./routes/appointments'));
 
 // === ROUTES API ADMIN (JWT requis) ===
 app.use('/api/clients', requireAuth, require('./routes/clients'));
