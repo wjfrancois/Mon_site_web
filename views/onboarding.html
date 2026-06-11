@@ -186,7 +186,7 @@
         <label for="ownerPassword">Mot de passe *</label>
         <div class="input-wrap">
           <i class="fas fa-lock field-icon"></i>
-          <input type="password" id="ownerPassword" placeholder="Au moins 8 caractères" required minlength="8">
+          <input type="password" id="ownerPassword" placeholder="Au moins 6 caractères" required minlength="6">
           <button type="button" class="toggle-pwd" onclick="togglePwd()" tabindex="-1">
             <i class="fas fa-eye" id="toggleIcon"></i>
           </button>
@@ -272,10 +272,10 @@
     const plan = document.querySelector('input[name="plan"]:checked')?.value || 'pro';
 
     const body = {
-      salon_name: document.getElementById('salonName').value,
-      salon_phone: document.getElementById('salonPhone').value,
-      salon_address: document.getElementById('salonAddress').value,
-      owner_name: document.getElementById('ownerName').value,
+      shopName: document.getElementById('salonName').value,
+      phone: document.getElementById('salonPhone').value,
+      address: document.getElementById('salonAddress').value,
+      ownerName: document.getElementById('ownerName').value,
       email: document.getElementById('ownerEmail').value,
       password: document.getElementById('ownerPassword').value,
       plan
