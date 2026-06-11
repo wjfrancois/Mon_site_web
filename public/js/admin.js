@@ -1107,9 +1107,18 @@ async function uploadGalleryPhotos(input) {
   for (const file of files) {
     const formData = new FormData();
     formData.append('image', file);
-    const res = await authFetch('/api/admin/gallery', { method: 'POST', body: formData });
-    if (res?.ok) uploaded++;
-    else showToast('Erreur pour: ' + file.name, 'error');
+    try {
+      const res = await authFetch('/api/admin/gallery', { method: 'POST', body: formData });
+      if (res?.ok) {
+        uploaded++;
+      } else {
+        let errMsg = file.name;
+        try { const d = await res.json(); errMsg = d.error || errMsg; } catch(_) {}
+        showToast('Erreur: ' + errMsg, 'error');
+      }
+    } catch(e) {
+      showToast('Erreur réseau: ' + file.name, 'error');
+    }
   }
   if (uploaded) showToast(`${uploaded} photo(s) ajoutée(s)`, 'success');
   input.value = '';
