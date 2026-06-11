@@ -26,8 +26,57 @@ document.addEventListener('DOMContentLoaded', () => {
   loadBarbers();
   initCalendar();
   initNavHighlight();
+  initDropdowns();
   document.getElementById('bookingForm').addEventListener('submit', submitBooking);
 });
+
+function initDropdowns() {
+  let closeTimer = null;
+
+  document.querySelectorAll('.bnav-dropdown').forEach(dd => {
+    const menu = dd.querySelector('.bnav-dropdown-menu');
+    if (!menu) return;
+
+    function openMenu() {
+      clearTimeout(closeTimer);
+      // Ferme les autres
+      document.querySelectorAll('.bnav-dropdown.open').forEach(other => {
+        if (other !== dd) { other.classList.remove('open'); other.querySelector('.bnav-dropdown-menu')?.classList.remove('open'); }
+      });
+      const rect = dd.getBoundingClientRect();
+      menu.style.left = Math.round(rect.left + rect.width / 2 - (menu.offsetWidth || 180) / 2) + 'px';
+      menu.style.top  = Math.round(rect.bottom) + 'px';
+      dd.classList.add('open');
+      menu.classList.add('open');
+      // Recalcule après affichage pour corriger la largeur réelle
+      requestAnimationFrame(() => {
+        menu.style.left = Math.round(rect.left + rect.width / 2 - menu.offsetWidth / 2) + 'px';
+      });
+    }
+
+    function scheduleClose() {
+      closeTimer = setTimeout(() => {
+        dd.classList.remove('open');
+        menu.classList.remove('open');
+      }, 120);
+    }
+
+    dd.addEventListener('mouseenter', openMenu);
+    dd.addEventListener('mouseleave', scheduleClose);
+    menu.addEventListener('mouseenter', () => clearTimeout(closeTimer));
+    menu.addEventListener('mouseleave', scheduleClose);
+  });
+
+  // Ferme tout si on clique ailleurs
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.bnav-dropdown')) {
+      document.querySelectorAll('.bnav-dropdown.open').forEach(dd => {
+        dd.classList.remove('open');
+        dd.querySelector('.bnav-dropdown-menu')?.classList.remove('open');
+      });
+    }
+  });
+}
 
 function initNavHighlight() {
   const links = document.querySelectorAll('.bnav-link[data-section]');
