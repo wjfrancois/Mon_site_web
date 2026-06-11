@@ -66,6 +66,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('[data-owner-only]').forEach(el => el.style.display = 'none');
       }
       window._tenantBookingUrl = me.booking_url;
+
+      const salonNameEl = document.getElementById('sidebarSalonName');
+      if (salonNameEl && me.tenant?.name) salonNameEl.textContent = me.tenant.name;
+
+      if (me.booking_url) {
+        const card = document.getElementById('dashboardBookingUrl');
+        const link = document.getElementById('dashboardBookingLink');
+        const openBtn = document.getElementById('dashboardBookingOpen');
+        if (card) card.style.display = 'flex';
+        if (link) { link.href = me.booking_url; link.textContent = me.booking_url; }
+        if (openBtn) openBtn.href = me.booking_url;
+      }
     }
   } catch(e) { console.error('Error loading user info:', e); }
 });

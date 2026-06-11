@@ -47,8 +47,8 @@ router.post('/webhook', express.raw({ type: 'application/json' }), (req, res) =>
   res.json({ received: true });
 });
 
-// GET /api/admin/billing (auth requise)
-router.get('/billing', requireAuth, (req, res) => {
+// GET /api/admin/billing
+router.get('/', requireAuth, (req, res) => {
   const t = req.tenant;
   const daysLeft = t.trial_ends_at ? Math.max(0, Math.ceil((new Date(t.trial_ends_at) - new Date()) / (1000*60*60*24))) : 0;
   res.json({
@@ -59,8 +59,8 @@ router.get('/billing', requireAuth, (req, res) => {
   });
 });
 
-// POST /api/admin/billing/portal (auth requise)
-router.post('/billing/portal', requireAuth, async (req, res) => {
+// POST /api/admin/billing/portal
+router.post('/portal', requireAuth, async (req, res) => {
   const stripe = getStripe();
   if (!stripe || !req.tenant.stripe_customer_id) return res.status(400).json({ error: 'Stripe non configuré' });
   try {
@@ -72,8 +72,8 @@ router.post('/billing/portal', requireAuth, async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/billing/checkout (auth requise)
-router.post('/billing/checkout', requireAuth, async (req, res) => {
+// POST /api/admin/billing/checkout
+router.post('/checkout', requireAuth, async (req, res) => {
   const stripe = getStripe();
   if (!stripe) return res.status(400).json({ error: 'Stripe non configuré' });
   const { plan } = req.body;

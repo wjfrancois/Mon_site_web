@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fenix Barbier – Tableau de bord</title>
+  <title>BarberSaaS – Tableau de bord</title>
+  <!-- Garde d'auth instantanée : redirige avant tout rendu si pas de token -->
+  <script>if(!localStorage.getItem('accessToken')){window.location.replace('/login')}</script>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -17,7 +19,7 @@
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="logo"><i class="fas fa-cut"></i><span>Fenix Barbier</span></div>
+    <div class="logo"><i class="fas fa-cut"></i><span id="sidebarSalonName">Mon Salon</span></div>
     <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
   </div>
   <nav class="sidebar-nav">
@@ -84,6 +86,18 @@
 
     <!-- DASHBOARD -->
     <div id="page-dashboard" class="page-section">
+
+      <!-- Lien de réservation -->
+      <div class="booking-url-card" id="dashboardBookingUrl" style="margin-bottom:1.25rem;display:none">
+        <i class="fas fa-link" style="color:var(--blue);flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:2px">Votre lien de réservation public</div>
+          <a id="dashboardBookingLink" href="#" target="_blank" class="booking-url-text" style="font-size:0.875rem"></a>
+        </div>
+        <button onclick="copyBookingUrl()" class="btn btn-sm btn-outline"><i class="fas fa-copy"></i> Copier</button>
+        <a id="dashboardBookingOpen" href="#" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-external-link-alt"></i> Voir</a>
+      </div>
+
       <div class="kpi-grid">
         <div class="kpi-card kpi-blue">
           <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
