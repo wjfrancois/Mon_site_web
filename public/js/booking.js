@@ -210,7 +210,7 @@ function renderServicesShowcase() {
 function preselectService(serviceId) {
   const service = state.services.find(s => s.id === serviceId);
   if (!service) return;
-  state.selectedService = service;
+  state.selectedService = serviceId;
   document.getElementById('btn-step1-next').disabled = false;
   renderServiceOptions();
 }
@@ -412,7 +412,7 @@ function goToStep(n) {
   }
   if (n === 4) renderBookingSummary();
   // Scroll to booking section
-  document.getElementById('booking-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('reservation')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ---- BOOKING SUMMARY ----
@@ -475,7 +475,7 @@ async function submitBooking(e) {
 function showConfirmation(data) {
   const wizard = document.getElementById('bookingWizard');
   const success = document.getElementById('successScreen');
-  const section = document.getElementById('booking-section');
+  const section = document.getElementById('reservation');
 
   if (wizard) wizard.style.display = 'none';
   if (success) success.classList.remove('hidden');
