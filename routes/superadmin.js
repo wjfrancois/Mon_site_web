@@ -2,10 +2,27 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'jwt_fallback_secret';
 const PLAN_PRICE = { starter: 29, pro: 59, business: 99 };
+
+// Hash le mot de passe au démarrage — jamais stocké en clair en mémoire
+const _SA_EMAIL = process.env.SUPERADMIN_EMAIL || null;
+const _SA_HASH  = process.env.SUPERADMIN_PASSWORD
+  ? bcrypt.hashSync(process.env.SUPERADMIN_PASSWORD, 12)
+  : null;
+
+// Rate limiter en mémoire : max 5 tentatives / 15 min par IP
+const _attempts = new Map();
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = _attempts.get(ip) || { n: 0, until: now + 15 * 60 * 1000 };
+  if (now > entry.until) { entry.n = 0; entry.until = now + 15 * 60 * 1000; }
+  entry.n++;
+  _attempts.set(ip, entry);
+  return entry.n > 5;
+}
 
 function requireSuperAdmin(req, res, next) {
   const header = req.headers.authorization;
@@ -21,20 +38,30 @@ function requireSuperAdmin(req, res, next) {
 
 // POST /api/superadmin/login
 router.post('/login', async (req, res) => {
+  const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+
+  if (isRateLimited(ip)) {
+    return res.status(429).json({ error: 'Trop de tentatives. Réessayez dans 15 minutes.' });
+  }
+
+  // Délai constant anti-timing même si non configuré
+  await new Promise(r => setTimeout(r, 600));
+
+  if (!_SA_EMAIL || !_SA_HASH) {
+    return res.status(503).json({ error: 'Superadmin non configuré — ajoutez SUPERADMIN_EMAIL et SUPERADMIN_PASSWORD dans vos variables d\'environnement.' });
+  }
+
   const { email, password } = req.body;
-  const adminEmail = process.env.SUPERADMIN_EMAIL;
-  const adminPwd   = process.env.SUPERADMIN_PASSWORD;
+  const emailOk = email === _SA_EMAIL;
+  // bcrypt.compare est résistant aux timing attacks par conception
+  const pwdOk   = emailOk && await bcrypt.compare(password || '', _SA_HASH);
 
-  if (!adminEmail || !adminPwd) return res.status(503).json({ error: 'Superadmin non configuré (SUPERADMIN_EMAIL / SUPERADMIN_PASSWORD manquants)' });
+  if (!emailOk || !pwdOk) {
+    return res.status(401).json({ error: 'Identifiants incorrects' });
+  }
 
-  await new Promise(r => setTimeout(r, 400)); // anti-brute-force constant delay
-
-  const emailOk = email === adminEmail;
-  const pwdBuf  = Buffer.alloc(256); adminPwd.copy ? adminPwd.copy(pwdBuf) : Buffer.from(adminPwd).copy(pwdBuf);
-  const inpBuf  = Buffer.alloc(256); Buffer.from(password || '').copy(inpBuf);
-  const pwdOk   = crypto.timingSafeEqual(pwdBuf, inpBuf) && password === adminPwd;
-
-  if (!emailOk || !pwdOk) return res.status(401).json({ error: 'Identifiants incorrects' });
+  // Succès : réinitialiser le compteur d'essais
+  _attempts.delete(ip);
 
   const token = jwt.sign({ role: 'superadmin', email }, JWT_SECRET, { expiresIn: '8h' });
   res.json({ accessToken: token });
