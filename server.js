@@ -41,16 +41,6 @@ app.use('/api/onboarding', require('./routes/onboarding'));
 app.use('/api/stripe', require('./routes/stripe'));
 app.use('/api/superadmin', require('./routes/superadmin'));
 
-// Services et barbers en GET public (pour index.html legacy)
-app.get('/api/services', (req, res, next) => {
-  const rows = db.prepare('SELECT * FROM services WHERE tenant_id = 1 AND active = 1 ORDER BY name ASC').all();
-  res.json(rows);
-});
-app.get('/api/barbers', (req, res, next) => {
-  const rows = db.prepare('SELECT id, name, color FROM barbers WHERE tenant_id = 1 AND active = 1 ORDER BY name ASC').all();
-  res.json(rows);
-});
-
 app.use('/api/appointments', requireAuth, require('./routes/appointments'));
 
 // === ROUTES API ADMIN (JWT requis) ===

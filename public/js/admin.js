@@ -272,10 +272,14 @@ function renderCalendarView(appointments, date, barberId) {
       const appts = appointments.filter(a => a.barber_id === b.id && a.time.slice(0,5) === h);
       let cellHtml = '';
       appts.forEach(a => {
-        const topPercent = 0;
         const heightPercent = Math.min(a.duration / 30 * 100, 200);
-        cellHtml += `<div class="cal-event" style="background:${b.color};top:2px;height:${Math.max(heightPercent - 4, 22)}px" title="${a.client_name} – ${a.service_name}" onclick="changeApptStatus(${a.id})">
-          ${a.time} ${a.client_name}
+        const bgColor = a.status === 'confirmed' ? '#10b981'
+                      : a.status === 'cancelled'  ? '#ef4444'
+                      : a.status === 'completed'  ? '#6366f1'
+                      : b.color;
+        const statusLabel = { confirmed: '✓ ', cancelled: '✗ ', completed: '★ ' }[a.status] || '';
+        cellHtml += `<div class="cal-event" style="background:${bgColor};top:2px;height:${Math.max(heightPercent - 4, 22)}px" title="${a.client_name} – ${a.service_name} (${a.status})" onclick="changeApptStatus(${a.id})">
+          ${statusLabel}${a.time} ${a.client_name}
         </div>`;
       });
       html += `<div class="cal-cell">${cellHtml}</div>`;
