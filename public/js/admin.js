@@ -1014,7 +1014,12 @@ async function loadCustomization() {
   if (colorInput) { colorInput.value = c.primary_color || '#e2b04a'; }
   if (colorPreview) colorPreview.style.background = c.primary_color || '#e2b04a';
 
-  const fields = { customHeroTag: c.hero_tag, customHeroTitle: c.hero_title, customHeroSubtitle: c.hero_subtitle, customSalonName: c.name, customSalonPhone: c.phone, customSalonAddress: c.address, customSalonEmail: c.email };
+  const fields = {
+    customHeroTag: c.hero_tag, customHeroTitle: c.hero_title, customHeroSubtitle: c.hero_subtitle,
+    customSalonName: c.name, customSalonPhone: c.phone, customSalonAddress: c.address, customSalonEmail: c.email,
+    customInstagram: c.instagram_url, customFacebook: c.facebook_url, customTiktok: c.tiktok_url,
+    customAboutText: c.about_text, customProductsText: c.products_text
+  };
   Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
 
   renderImageZone('logoPreviewWrap', c.logo_url, 'logo');
@@ -1069,6 +1074,25 @@ async function saveCustomizationInfo() {
   };
   const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
   if (res?.ok) showToast('Informations sauvegardées', 'success');
+}
+
+async function saveCustomizationSocials() {
+  const body = {
+    instagram_url: document.getElementById('customInstagram')?.value || '',
+    facebook_url: document.getElementById('customFacebook')?.value || '',
+    tiktok_url: document.getElementById('customTiktok')?.value || ''
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Réseaux sociaux sauvegardés', 'success');
+}
+
+async function saveCustomizationContent() {
+  const body = {
+    about_text: document.getElementById('customAboutText')?.value || '',
+    products_text: document.getElementById('customProductsText')?.value || ''
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Contenu sauvegardé', 'success');
 }
 
 async function saveCustomizationColor() {

@@ -17,7 +17,9 @@ router.get('/:slug/info', (req, res) => {
     name: t.name, slug: t.slug, phone: t.phone, address: t.address,
     logo_url: t.logo_url, banner_url: t.banner_url, hero_photo_url: t.hero_photo_url,
     primary_color: t.primary_color || '#e2b04a',
-    hero_title: t.hero_title, hero_subtitle: t.hero_subtitle, hero_tag: t.hero_tag
+    hero_title: t.hero_title, hero_subtitle: t.hero_subtitle, hero_tag: t.hero_tag,
+    instagram_url: t.instagram_url, facebook_url: t.facebook_url, tiktok_url: t.tiktok_url,
+    about_text: t.about_text, products_text: t.products_text
   });
 });
 

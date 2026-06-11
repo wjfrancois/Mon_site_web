@@ -233,4 +233,12 @@ db.exec(`
   );
 `);
 
+// Migration: réseaux sociaux + contenu
+{
+  const tc = db.prepare("PRAGMA table_info(tenants)").all().map(c => c.name);
+  ['instagram_url','facebook_url','tiktok_url','about_text','products_text'].forEach(col => {
+    if (!tc.includes(col)) try { db.exec(`ALTER TABLE tenants ADD COLUMN ${col} TEXT`); } catch(e) {}
+  });
+}
+
 module.exports = db;

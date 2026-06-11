@@ -571,6 +571,46 @@
         </div>
       </div>
 
+      <!-- Réseaux sociaux -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-share-nodes"></i> Réseaux sociaux</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveCustomizationSocials()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem">
+          <div class="form-group" style="margin:0">
+            <label><i class="fab fa-instagram" style="color:#e1306c"></i> Instagram</label>
+            <input type="url" id="customInstagram" class="form-input" placeholder="https://instagram.com/votresalon">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label><i class="fab fa-facebook-f" style="color:#1877f2"></i> Facebook</label>
+            <input type="url" id="customFacebook" class="form-input" placeholder="https://facebook.com/votresalon">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label><i class="fab fa-tiktok"></i> TikTok</label>
+            <input type="url" id="customTiktok" class="form-input" placeholder="https://tiktok.com/@votresalon">
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenu des sections -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-file-lines"></i> Contenu des sections</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveCustomizationContent()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem">
+          <div class="form-group" style="margin:0">
+            <label>Section "Marque" — texte de présentation du salon</label>
+            <textarea id="customAboutText" class="form-input" rows="4" placeholder="Parlez de votre salon, vos valeurs, votre histoire..."></textarea>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Section "Type de produits" — produits utilisés</label>
+            <textarea id="customProductsText" class="form-input" rows="4" placeholder="Ex: Cire Uppercut Deluxe, Pomade American Crew, Huile de barbe Baxter..."></textarea>
+          </div>
+        </div>
+      </div>
+
       <!-- Booking URL -->
       <div class="card">
         <div class="card-header">

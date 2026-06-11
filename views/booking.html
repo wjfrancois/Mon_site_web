@@ -10,13 +10,10 @@
   <link rel="stylesheet" href="/css/style.css">
   <style>
     :root { --tenant-accent: #e2b04a; }
-    /* Override accent with tenant color */
     .btn-primary { background: var(--tenant-accent) !important; }
     .step.active .step-num { background: var(--tenant-accent) !important; color: var(--primary) !important; }
     .step.done .step-num { background: var(--tenant-accent) !important; }
-    .service-card.selected,
-    .barber-card.selected,
-    .time-slot.selected { border-color: var(--tenant-accent) !important; background: color-mix(in srgb, var(--tenant-accent) 8%, white) !important; }
+    .service-card.selected, .barber-card.selected, .time-slot.selected { border-color: var(--tenant-accent) !important; background: color-mix(in srgb, var(--tenant-accent) 8%, white) !important; }
     .step-connector.done { background: var(--tenant-accent) !important; }
     .calendar-day.selected { background: var(--tenant-accent) !important; }
     .btn-primary:hover { filter: brightness(0.9); }
@@ -26,147 +23,155 @@
 
 <!-- HEADER -->
 <header class="booking-header" id="bookingHeader">
-  <img id="salonLogo" class="salon-logo" src="" alt="Logo" style="display:none">
-  <span class="salon-name" id="salonName">Chargement...</span>
+  <div style="display:flex;align-items:center;gap:0.75rem">
+    <img id="salonLogo" class="salon-logo" src="" alt="Logo" style="display:none">
+    <span class="salon-name" id="salonName">Chargement...</span>
+  </div>
+  <div id="headerSocials" class="header-socials"></div>
 </header>
 
+<!-- STICKY NAV -->
+<nav class="booking-nav" id="bookingNav">
+  <div class="booking-nav-inner">
+    <a href="#accueil" class="bnav-link active" data-section="accueil">Accueil</a>
+    <a href="#marque" class="bnav-link" data-section="marque">Marque</a>
+    <a href="#produits" class="bnav-link" data-section="produits">Type de produits</a>
+    <a href="#services" class="bnav-link" data-section="services">Nos services</a>
+    <a href="#reservation" class="bnav-link bnav-cta" data-section="reservation">Rendez-vous</a>
+  </div>
+</nav>
+
 <!-- HERO -->
-<section class="booking-hero" id="bookingHero">
+<section class="booking-hero" id="accueil">
   <div class="booking-hero-bg" id="heroBg"></div>
   <div class="booking-hero-overlay"></div>
   <div class="booking-hero-content">
     <span class="hero-tag" id="heroTag" style="display:none"></span>
     <h1 id="heroTitle">Réservez votre rendez-vous</h1>
     <p id="heroSubtitle">Choisissez votre service, votre barbier et votre créneau.</p>
-    <div class="hero-stats" style="margin-top:2rem">
-      <a href="#booking-section" class="btn btn-primary" style="text-decoration:none">
+    <div style="margin-top:2rem">
+      <a href="#reservation" class="btn btn-primary" style="text-decoration:none">
         <i class="fas fa-calendar-plus"></i> Prendre rendez-vous
       </a>
     </div>
   </div>
 </section>
 
+<!-- NOS SERVICES -->
+<section id="services" style="padding:4rem 1.5rem; background:var(--white)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Nos services</h2>
+    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Découvrez nos prestations</p>
+    <div id="servicesShowcase" class="services-showcase-grid"></div>
+  </div>
+</section>
+
+<!-- MARQUE -->
+<section id="marque" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
+  <div style="max-width:900px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center">
+    <div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:1rem;color:var(--primary)" id="marqueTitle">Notre marque</h2>
+      <div id="marqueText" style="color:var(--text-light);line-height:1.8;font-size:0.975rem;white-space:pre-line"></div>
+    </div>
+    <div id="marqueBannerWrap" style="display:none">
+      <img id="marqueBanner" src="" alt="" style="width:100%;border-radius:var(--radius);object-fit:cover;max-height:360px">
+    </div>
+  </div>
+</section>
+
+<!-- TYPE DE PRODUITS -->
+<section id="produits" style="display:none;padding:4rem 1.5rem;background:var(--white)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Type de produits</h2>
+    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Les produits que nous utilisons</p>
+    <div id="produitsContent" style="color:var(--text);line-height:1.8;font-size:0.975rem;white-space:pre-line;max-width:700px"></div>
+  </div>
+</section>
+
 <!-- GALLERY -->
-<section id="gallery-section" style="display:none; padding: 3rem 1.5rem; background: var(--white);">
-  <div style="max-width:1100px; margin:0 auto;">
-    <h2 style="font-family:'Playfair Display',serif; font-size:clamp(1.5rem,3vw,2rem); margin-bottom:0.5rem; color:var(--primary)">Notre galerie</h2>
-    <p style="color:var(--text-light); margin-bottom:2rem; font-size:0.95rem">Inspirez-vous de nos réalisations</p>
+<section id="gallery-section" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Notre galerie</h2>
+    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Inspirez-vous de nos réalisations</p>
     <div id="galleryGrid" class="gallery-public-grid"></div>
   </div>
 </section>
 
 <!-- BOOKING WIZARD -->
-<section id="booking-section" style="padding: 3rem 1rem; background: var(--surface);">
-  <div class="booking-wizard" id="bookingWizard">
-
-    <!-- Steps Indicator -->
-    <div class="steps-indicator">
-      <div class="step active" id="step-ind-1">
-        <div class="step-num">1</div>
-        <p>Service</p>
+<section id="reservation" style="padding:4rem 1rem;background:var(--primary)">
+  <div style="max-width:900px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:white;text-align:center">Prendre rendez-vous</h2>
+    <p style="color:rgba(255,255,255,0.6);text-align:center;margin-bottom:2rem;font-size:0.95rem">Réservez en quelques clics, 24h/24</p>
+    <div class="booking-wizard" id="bookingWizard">
+      <!-- Steps Indicator -->
+      <div class="steps-indicator">
+        <div class="step active" id="step-ind-1"><div class="step-num">1</div><p>Service</p></div>
+        <div class="step-connector" id="conn-1"></div>
+        <div class="step" id="step-ind-2"><div class="step-num">2</div><p>Barbier</p></div>
+        <div class="step-connector" id="conn-2"></div>
+        <div class="step" id="step-ind-3"><div class="step-num">3</div><p>Date & Heure</p></div>
+        <div class="step-connector" id="conn-3"></div>
+        <div class="step" id="step-ind-4"><div class="step-num">4</div><p>Confirmer</p></div>
       </div>
-      <div class="step-connector" id="conn-1"></div>
-      <div class="step" id="step-ind-2">
-        <div class="step-num">2</div>
-        <p>Barbier</p>
-      </div>
-      <div class="step-connector" id="conn-2"></div>
-      <div class="step" id="step-ind-3">
-        <div class="step-num">3</div>
-        <p>Date & Heure</p>
-      </div>
-      <div class="step-connector" id="conn-3"></div>
-      <div class="step" id="step-ind-4">
-        <div class="step-num">4</div>
-        <p>Confirmer</p>
-      </div>
-    </div>
-
-    <!-- Step 1: Service -->
-    <div class="wizard-step" id="wizard-step-1">
-      <h2 class="step-title">Choisissez un service</h2>
-      <div class="services-select-grid" id="serviceGrid">
-        <div class="empty-state"><div class="spinner" style="width:30px;height:30px;border-width:3px;margin:0 auto"></div><p>Chargement...</p></div>
-      </div>
-      <div class="step-nav">
-        <span></span>
-        <button class="btn btn-primary" id="btn-step1-next" onclick="goToStep(2)" disabled>
-          Suivant <i class="fas fa-arrow-right"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Step 2: Barber -->
-    <div class="wizard-step hidden" id="wizard-step-2">
-      <h2 class="step-title">Choisissez votre barbier</h2>
-      <div class="barbers-grid" id="barberGrid">
-        <div class="empty-state"><div class="spinner" style="width:30px;height:30px;border-width:3px;margin:0 auto"></div><p>Chargement...</p></div>
-      </div>
-      <div class="step-nav">
-        <button class="btn btn-outline" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Retour</button>
-        <button class="btn btn-primary" id="btn-step2-next" onclick="goToStep(3)" disabled>
-          Suivant <i class="fas fa-arrow-right"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Step 3: Date & Time -->
-    <div class="wizard-step hidden" id="wizard-step-3">
-      <h2 class="step-title">Choisissez une date et une heure</h2>
-      <div class="datetime-picker">
-        <div class="calendar-container">
-          <div class="calendar-nav">
-            <button class="btn-cal-nav" onclick="prevMonth()"><i class="fas fa-chevron-left"></i></button>
-            <span class="cal-month-label" id="calMonthLabel"></span>
-            <button class="btn-cal-nav" onclick="nextMonth()"><i class="fas fa-chevron-right"></i></button>
-          </div>
-          <div class="calendar-grid" id="calendarGrid"></div>
+      <!-- Step 1 -->
+      <div class="wizard-step" id="wizard-step-1">
+        <h2 class="step-title">Choisissez un service</h2>
+        <div class="services-select-grid" id="serviceGrid">
+          <div class="empty-state"><div class="spinner" style="width:30px;height:30px;border-width:3px;margin:0 auto"></div><p>Chargement...</p></div>
         </div>
-        <div class="time-slots-container">
-          <h3 id="selectedDateLabel" style="font-size:0.95rem;color:var(--text-light);margin-bottom:1rem">Sélectionnez une date</h3>
-          <div class="time-slots" id="timeSlots"></div>
-        </div>
+        <div class="step-nav"><span></span><button class="btn btn-primary" id="btn-step1-next" onclick="goToStep(2)" disabled>Suivant <i class="fas fa-arrow-right"></i></button></div>
       </div>
-      <div class="step-nav">
-        <button class="btn btn-outline" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Retour</button>
-        <button class="btn btn-primary" id="btn-step3-next" onclick="goToStep(4)" disabled>
-          Suivant <i class="fas fa-arrow-right"></i>
-        </button>
-      </div>
-    </div>
-
-    <!-- Step 4: Confirm -->
-    <div class="wizard-step hidden" id="wizard-step-4">
-      <h2 class="step-title">Vos informations</h2>
-      <div class="booking-summary" id="bookingSummary"></div>
-      <form id="bookingForm" style="margin-top:1.5rem">
-        <div class="form-row">
-          <div class="form-group">
-            <label>Votre nom *</label>
-            <input type="text" id="clientName" class="form-input" placeholder="Jean Dupont" required>
-          </div>
-          <div class="form-group">
-            <label>Téléphone *</label>
-            <input type="tel" id="clientPhone" class="form-input" placeholder="514-555-0000" required>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Courriel (optionnel)</label>
-          <input type="email" id="clientEmail" class="form-input" placeholder="vous@exemple.com">
-        </div>
-        <div class="form-group">
-          <label>Notes (optionnel)</label>
-          <textarea id="clientNotes" class="form-input" rows="2" placeholder="Ex: allergie, préférence..."></textarea>
+      <!-- Step 2 -->
+      <div class="wizard-step hidden" id="wizard-step-2">
+        <h2 class="step-title">Choisissez votre barbier</h2>
+        <div class="barbers-grid" id="barberGrid">
+          <div class="empty-state"><div class="spinner" style="width:30px;height:30px;border-width:3px;margin:0 auto"></div><p>Chargement...</p></div>
         </div>
         <div class="step-nav">
-          <button type="button" class="btn btn-outline" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Retour</button>
-          <button type="submit" class="btn btn-primary" id="submitBtn">
-            <i class="fas fa-check"></i> Confirmer le rendez-vous
-          </button>
+          <button class="btn btn-outline" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" id="btn-step2-next" onclick="goToStep(3)" disabled>Suivant <i class="fas fa-arrow-right"></i></button>
         </div>
-      </form>
+      </div>
+      <!-- Step 3 -->
+      <div class="wizard-step hidden" id="wizard-step-3">
+        <h2 class="step-title">Choisissez une date et une heure</h2>
+        <div class="datetime-picker">
+          <div class="calendar-container">
+            <div class="calendar-nav">
+              <button class="btn-cal-nav" onclick="prevMonth()"><i class="fas fa-chevron-left"></i></button>
+              <span class="cal-month-label" id="calMonthLabel"></span>
+              <button class="btn-cal-nav" onclick="nextMonth()"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+          <div class="time-slots-container">
+            <h3 id="selectedDateLabel" style="font-size:0.95rem;color:var(--text-light);margin-bottom:1rem">Sélectionnez une date</h3>
+            <div class="time-slots" id="timeSlots"></div>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-outline" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" id="btn-step3-next" onclick="goToStep(4)" disabled>Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+      <!-- Step 4 -->
+      <div class="wizard-step hidden" id="wizard-step-4">
+        <h2 class="step-title">Vos informations</h2>
+        <div class="booking-summary" id="bookingSummary"></div>
+        <form id="bookingForm" style="margin-top:1.5rem">
+          <div class="form-row">
+            <div class="form-group"><label>Votre nom *</label><input type="text" id="clientName" class="form-input" placeholder="Jean Dupont" required></div>
+            <div class="form-group"><label>Téléphone *</label><input type="tel" id="clientPhone" class="form-input" placeholder="514-555-0000" required></div>
+          </div>
+          <div class="form-group"><label>Courriel (optionnel)</label><input type="email" id="clientEmail" class="form-input" placeholder="vous@exemple.com"></div>
+          <div class="form-group"><label>Notes (optionnel)</label><textarea id="clientNotes" class="form-input" rows="2" placeholder="Ex: allergie, préférence..."></textarea></div>
+          <div class="step-nav">
+            <button type="button" class="btn btn-outline" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Retour</button>
+            <button type="submit" class="btn btn-primary" id="submitBtn"><i class="fas fa-check"></i> Confirmer le rendez-vous</button>
+          </div>
+        </form>
+      </div>
     </div>
-
   </div>
 </section>
 
@@ -177,17 +182,17 @@
     <h2>Rendez-vous confirmé !</h2>
     <p id="confirmationMsg">Votre rendez-vous a été enregistré avec succès.</p>
     <div class="booking-summary" id="confirmSummary" style="margin:1.5rem 0"></div>
-    <button class="btn btn-primary" onclick="resetBooking()">
-      <i class="fas fa-calendar-plus"></i> Prendre un autre rendez-vous
-    </button>
+    <button class="btn btn-primary" onclick="resetBooking()"><i class="fas fa-calendar-plus"></i> Prendre un autre rendez-vous</button>
   </div>
 </div>
 
 <!-- FOOTER -->
-<footer style="background: var(--primary); color: rgba(255,255,255,0.7); padding: 2rem 1.5rem; text-align:center; margin-top:0">
-  <div id="salonContactInfo" style="margin-bottom:1rem; display:flex; gap:1.5rem; justify-content:center; flex-wrap:wrap; font-size:0.875rem">
+<footer class="booking-footer">
+  <div class="footer-inner">
+    <div id="salonContactInfo" class="footer-contact"></div>
+    <div id="footerSocials" class="footer-socials"></div>
+    <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:1rem">Propulsé par Créno</p>
   </div>
-  <p style="font-size:0.75rem; color:rgba(255,255,255,0.4)">Propulsé par Créno</p>
 </footer>
 
 <script src="/js/booking.js"></script>

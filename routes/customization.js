@@ -29,13 +29,15 @@ router.get('/', (req, res) => {
     primary_color: t.primary_color || '#e2b04a',
     hero_title: t.hero_title, hero_subtitle: t.hero_subtitle, hero_tag: t.hero_tag,
     name: t.name, phone: t.phone, address: t.address, email: t.email,
+    instagram_url: t.instagram_url, facebook_url: t.facebook_url, tiktok_url: t.tiktok_url,
+    about_text: t.about_text, products_text: t.products_text,
     public_url: `${process.env.APP_URL || 'http://localhost:3000'}/book/${t.slug}`
   });
 });
 
 // PUT /api/admin/customization — mise à jour partielle (seuls les champs envoyés sont modifiés)
 router.put('/', (req, res) => {
-  const allowed = ['primary_color', 'hero_title', 'hero_subtitle', 'hero_tag', 'name', 'phone', 'address'];
+  const allowed = ['primary_color', 'hero_title', 'hero_subtitle', 'hero_tag', 'name', 'phone', 'address', 'instagram_url', 'facebook_url', 'tiktok_url', 'about_text', 'products_text'];
   const toUpdate = {};
   allowed.forEach(k => { if (req.body[k] !== undefined) toUpdate[k] = req.body[k]; });
   if (!Object.keys(toUpdate).length) return res.json({ message: 'Rien à mettre à jour' });

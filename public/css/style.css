@@ -981,6 +981,45 @@ body {
 .color-picker-wrap { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .color-preview { width: 36px; height: 36px; border-radius: 8px; border: 2px solid var(--border); flex-shrink: 0; }
 
+/* Booking nav */
+.booking-nav { background: var(--primary-light); position: sticky; top: 0; z-index: 99; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.booking-nav-inner { display: flex; align-items: center; justify-content: center; gap: 0; max-width: 1100px; margin: 0 auto; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.booking-nav-inner::-webkit-scrollbar { display: none; }
+.bnav-link { color: rgba(255,255,255,0.6); text-decoration: none; padding: 0.9rem 1.25rem; font-size: 0.85rem; font-weight: 500; white-space: nowrap; transition: var(--transition); border-bottom: 2px solid transparent; }
+.bnav-link:hover, .bnav-link.active { color: white; border-bottom-color: var(--tenant-accent, #e2b04a); }
+.bnav-cta { background: var(--tenant-accent, #e2b04a); color: var(--primary) !important; margin: 0.4rem 0.75rem; border-radius: 20px; padding: 0.45rem 1.1rem; font-weight: 600; border-bottom: none !important; }
+.bnav-cta:hover { filter: brightness(0.9); border-bottom: none !important; }
+.bnav-cta.active { border-bottom: none !important; }
+
+/* Services showcase */
+.services-showcase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px,1fr)); gap: 1.25rem; }
+.service-showcase-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; transition: var(--transition); }
+.service-showcase-card:hover { box-shadow: var(--shadow); transform: translateY(-3px); border-color: var(--tenant-accent, #e2b04a); }
+.ssc-icon { font-size: 1.5rem; color: var(--tenant-accent, #e2b04a); }
+.ssc-info h3 { font-size: 1rem; font-weight: 600; color: var(--primary); margin-bottom: 2px; }
+.ssc-info p { font-size: 0.825rem; color: var(--text-light); }
+.ssc-meta { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-top: 1px solid var(--border); margin-top: auto; }
+.ssc-duration { font-size: 0.8rem; color: var(--text-light); }
+.ssc-price { font-size: 1.15rem; font-weight: 700; color: var(--primary); }
+
+/* Marque section layout */
+.marque-inner { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+
+/* Social icons */
+.header-socials { display: flex; align-items: center; gap: 0.4rem; }
+.social-icon-link { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75); text-decoration: none; transition: var(--transition); font-size: 0.9rem; flex-shrink: 0; }
+.social-icon-link:hover { background: var(--tenant-accent, #e2b04a); color: var(--primary); }
+
+/* Booking footer */
+.booking-footer { background: var(--primary); padding: 2.5rem 1.5rem; text-align: center; }
+.footer-inner { max-width: 700px; margin: 0 auto; }
+.footer-contact { display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; font-size: 0.875rem; color: rgba(255,255,255,0.6); margin-bottom: 1rem; }
+.footer-socials { display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+.footer-socials .social-icon-link { width: 42px; height: 42px; font-size: 1rem; background: rgba(255,255,255,0.1); }
+
+/* Booking wizard on dark bg */
+#reservation .booking-wizard { background: white; border-radius: var(--radius); padding: 2rem; box-shadow: var(--shadow-lg); }
+
 /* Gallery — Admin */
 .gallery-admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 1rem; }
 .gallery-admin-item { display: flex; flex-direction: column; }
@@ -1014,4 +1053,8 @@ body {
   .billing-plans-grid { grid-template-columns: 1fr; }
   .gallery-admin-grid { grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); }
   .gallery-public-grid { grid-template-columns: repeat(2, 1fr); }
+  .bnav-link { padding: 0.75rem 0.85rem; font-size: 0.78rem; }
+  .services-showcase-grid { grid-template-columns: 1fr; }
+  .marque-inner { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+  #reservation .booking-wizard { padding: 1.25rem; }
 }

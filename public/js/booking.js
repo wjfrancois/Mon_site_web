@@ -24,9 +24,25 @@ document.addEventListener('DOMContentLoaded', () => {
   loadServices();
   loadBarbers();
   initCalendar();
-
+  initNavHighlight();
   document.getElementById('bookingForm').addEventListener('submit', submitBooking);
 });
+
+function initNavHighlight() {
+  const links = document.querySelectorAll('.bnav-link[data-section]');
+  const sections = ['accueil','services','marque','produits','gallery-section','reservation'];
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        links.forEach(l => {
+          l.classList.toggle('active', l.dataset.section === id || (id === 'gallery-section' && l.dataset.section === 'galerie'));
+        });
+      }
+    });
+  }, { rootMargin: '-40% 0px -55% 0px' });
+  sections.forEach(id => { const el = document.getElementById(id); if (el) observer.observe(el); });
+}
 
 async function loadGallery() {
   try {
@@ -115,6 +131,42 @@ async function loadTenantInfo() {
       if (info.address) parts.push(`<span><i class="fas fa-map-marker-alt" style="margin-right:4px"></i>${info.address}</span>`);
       contactEl.innerHTML = parts.join('');
     }
+
+    // Réseaux sociaux (header + footer)
+    const socialLinks = [
+      info.instagram_url && { url: info.instagram_url, icon: 'fab fa-instagram', label: 'Instagram' },
+      info.facebook_url  && { url: info.facebook_url,  icon: 'fab fa-facebook-f', label: 'Facebook' },
+      info.tiktok_url    && { url: info.tiktok_url,    icon: 'fab fa-tiktok',     label: 'TikTok' }
+    ].filter(Boolean);
+    const socialHtml = socialLinks.map(s =>
+      `<a href="${s.url}" target="_blank" rel="noopener" class="social-icon-link" title="${s.label}"><i class="${s.icon}"></i></a>`
+    ).join('');
+    const headerSocials = document.getElementById('headerSocials');
+    const footerSocials = document.getElementById('footerSocials');
+    if (headerSocials) headerSocials.innerHTML = socialHtml;
+    if (footerSocials) footerSocials.innerHTML = socialHtml;
+
+    // Section Marque
+    if (info.about_text) {
+      const marqueSection = document.getElementById('marque');
+      const marqueText = document.getElementById('marqueText');
+      if (marqueSection) marqueSection.style.display = 'block';
+      if (marqueText) marqueText.textContent = info.about_text;
+      if (info.banner_url) {
+        const wrap = document.getElementById('marqueBannerWrap');
+        const img = document.getElementById('marqueBanner');
+        if (wrap) wrap.style.display = 'block';
+        if (img) img.src = info.banner_url;
+      }
+    }
+
+    // Section Produits
+    if (info.products_text) {
+      const produitsSection = document.getElementById('produits');
+      const produitsContent = document.getElementById('produitsContent');
+      if (produitsSection) produitsSection.style.display = 'block';
+      if (produitsContent) produitsContent.textContent = info.products_text;
+    }
   } catch (e) {
     console.error('loadTenantInfo error:', e);
   }
@@ -127,10 +179,40 @@ async function loadServices() {
     if (!res.ok) return;
     state.services = await res.json();
     renderServiceOptions();
+    renderServicesShowcase();
   } catch (e) {
     console.error('loadServices error:', e);
     document.getElementById('serviceGrid').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Impossible de charger les services.</p></div>';
   }
+}
+
+function renderServicesShowcase() {
+  const showcase = document.getElementById('servicesShowcase');
+  if (!showcase || !state.services.length) return;
+  showcase.innerHTML = state.services.map(s => `
+    <div class="service-showcase-card">
+      <div class="ssc-icon"><i class="fas fa-cut"></i></div>
+      <div class="ssc-info">
+        <h3>${s.name}</h3>
+        ${s.description ? `<p>${s.description}</p>` : ''}
+      </div>
+      <div class="ssc-meta">
+        <span class="ssc-duration"><i class="fas fa-clock"></i> ${s.duration} min</span>
+        <span class="ssc-price">${parseFloat(s.price).toFixed(2)} $</span>
+      </div>
+      <a href="#reservation" class="btn btn-primary" style="text-decoration:none;font-size:0.8rem;padding:8px 14px;margin-top:0.25rem;text-align:center" onclick="preselectService(${s.id})">
+        <i class="fas fa-calendar-plus"></i> Réserver
+      </a>
+    </div>
+  `).join('');
+}
+
+function preselectService(serviceId) {
+  const service = state.services.find(s => s.id === serviceId);
+  if (!service) return;
+  state.selectedService = service;
+  document.getElementById('btn-step1-next').disabled = false;
+  renderServiceOptions();
 }
 
 function renderServiceOptions() {
