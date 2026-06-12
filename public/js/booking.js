@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function initNavHighlight() {
   const links = document.querySelectorAll('.bnav-link[data-section]');
   const sections = ['accueil', 'boutique', 'services', 'gallery-section', 'reservation'];
+  // gallery-section mappe sur data-section="gallery-section"
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
@@ -61,6 +62,8 @@ async function loadGallery() {
       </div>
     `).join('');
     section.style.display = 'block';
+    const navLink = document.getElementById('navGalleryLink');
+    if (navLink) navLink.style.display = '';
   } catch (e) {}
 }
 
