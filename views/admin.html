@@ -458,6 +458,38 @@
         </div>
         <div style="padding:1.25rem;display:grid;gap:1.5rem">
 
+          <!-- Mode bannière -->
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.6rem">Mode de la bannière</label>
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="heroMode" value="manual" id="heroModeManual" checked onchange="toggleHeroMode('manual')" style="margin-top:3px">
+                <span><strong>Image fixe</strong> <span style="color:var(--text-light);font-size:0.85rem">— utilise l'image d'en-tête définie dans "Image d'en-tête du site"</span></span>
+              </label>
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="heroMode" value="slideshow" id="heroModeSlideshow" onchange="toggleHeroMode('slideshow')" style="margin-top:3px">
+                <span><strong>Diaporama automatique</strong> <span style="color:var(--text-light);font-size:0.85rem">— rotation d'images toutes les 5 secondes</span></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Gestionnaire de diaporama -->
+          <div id="heroSlideshowSection" style="display:none;border:1px solid var(--border);border-radius:10px;padding:1rem">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+              <label style="font-weight:600;font-size:0.9rem;margin:0">Images du diaporama</label>
+              <label class="btn btn-sm btn-outline" for="heroSlideInput" style="cursor:pointer">
+                <i class="fas fa-plus"></i> Ajouter une image
+              </label>
+              <input type="file" id="heroSlideInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadHeroSlide(this)">
+            </div>
+            <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:0.75rem">
+              <i class="fas fa-info-circle"></i> Les images défilent automatiquement sur la page client. Formats : JPG, PNG, WebP — max 5 Mo.
+            </p>
+            <div id="heroSlidesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem">
+              <p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image pour l'instant.</p>
+            </div>
+          </div>
+
           <div>
             <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.5rem">Couleur du fond</label>
             <div style="display:flex;align-items:center;gap:0.75rem">

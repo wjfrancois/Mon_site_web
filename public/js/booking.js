@@ -235,7 +235,11 @@ async function loadTenantInfo() {
     // Hero background
     const bgUrl = info.banner_url || info.hero_photo_url;
     const heroBg = document.getElementById('heroBg');
-    if (bgUrl && heroBg) heroBg.style.backgroundImage = `url('${bgUrl}')`;
+    if (info.hero_mode === 'slideshow' && info.hero_slides?.length) {
+      initSlideshow(info.hero_slides);
+    } else if (bgUrl && heroBg) {
+      heroBg.style.backgroundImage = `url('${bgUrl}')`;
+    }
 
     // Overlay couleur + opacité
     const color = info.hero_bg_color || '#1a1a2e';
@@ -291,6 +295,28 @@ async function loadTenantInfo() {
   } catch (e) {
     console.error('loadTenantInfo error:', e);
   }
+}
+
+// ---- HERO SLIDESHOW ----
+function initSlideshow(slides) {
+  if (!slides?.length) return;
+  const heroBg = document.getElementById('heroBg');
+  if (!heroBg) return;
+
+  let current = 0;
+  heroBg.style.backgroundImage = `url('${slides[0].url}')`;
+  heroBg.style.transition = 'opacity 0.8s ease';
+
+  if (slides.length < 2) return;
+
+  setInterval(() => {
+    heroBg.style.opacity = '0';
+    setTimeout(() => {
+      current = (current + 1) % slides.length;
+      heroBg.style.backgroundImage = `url('${slides[current].url}')`;
+      heroBg.style.opacity = '1';
+    }, 800);
+  }, 5000);
 }
 
 // ---- SERVICES ----

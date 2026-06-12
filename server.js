@@ -21,6 +21,16 @@ const VIEWS = path.join(__dirname, 'views');
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_delays TEXT DEFAULT '24'").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_overlay_opacity INTEGER DEFAULT 70").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_bg_color TEXT DEFAULT '#1a1a2e'").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_mode TEXT DEFAULT 'manual'").run();
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS hero_slides (
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        url TEXT NOT NULL,
+        position INTEGER DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).run();
   } catch(e) {
     console.warn('[Migration] Schema:', e.message);
   }
@@ -68,14 +78,16 @@ app.use('/api/admin/team', requireAuth, require('./routes/team'));
 app.use('/api/admin/billing', requireAuth, require('./routes/stripe'));
 app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
+app.use('/api/admin/hero-slides', requireAuth, require('./routes/heroSlides'));
 
 // PUT /api/admin/hero-overlay
 app.put('/api/admin/hero-overlay', requireAuth, async (req, res) => {
-  const { hero_overlay_opacity, hero_bg_color } = req.body;
+  const { hero_overlay_opacity, hero_bg_color, hero_mode } = req.body;
   const opacity = Math.min(90, Math.max(0, parseInt(hero_overlay_opacity) ?? 70));
   const color = /^#[0-9a-fA-F]{6}$/.test(hero_bg_color) ? hero_bg_color : '#1a1a2e';
-  await db.prepare('UPDATE tenants SET hero_overlay_opacity = ?, hero_bg_color = ? WHERE id = ?')
-    .run(opacity, color, req.tenantId);
+  const mode = ['manual', 'slideshow'].includes(hero_mode) ? hero_mode : 'manual';
+  await db.prepare('UPDATE tenants SET hero_overlay_opacity = ?, hero_bg_color = ?, hero_mode = ? WHERE id = ?')
+    .run(opacity, color, mode, req.tenantId);
   res.json({ message: 'Apparence mise à jour' });
 });
 

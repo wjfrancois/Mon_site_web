@@ -13,6 +13,11 @@ async function getTenant(slug) {
 router.get('/:slug/info', async (req, res) => {
   const t = await getTenant(req.params.slug);
   if (!t) return res.status(404).json({ error: 'Salon introuvable' });
+  const heroMode = t.hero_mode || 'manual';
+  let heroSlides = [];
+  if (heroMode === 'slideshow') {
+    heroSlides = await db.prepare('SELECT id, url FROM hero_slides WHERE tenant_id = ? ORDER BY position ASC, created_at ASC').all(t.id);
+  }
   res.json({
     name: t.name, slug: t.slug, phone: t.phone, address: t.address,
     logo_url: t.logo_url, banner_url: t.banner_url, hero_photo_url: t.hero_photo_url,
@@ -22,7 +27,9 @@ router.get('/:slug/info', async (req, res) => {
     about_text: t.about_text, products_text: t.products_text,
     booking_confirmation: t.booking_confirmation || 'automatic',
     hero_overlay_opacity: t.hero_overlay_opacity ?? 70,
-    hero_bg_color: t.hero_bg_color || '#1a1a2e'
+    hero_bg_color: t.hero_bg_color || '#1a1a2e',
+    hero_mode: heroMode,
+    hero_slides: heroSlides
   });
 });
 

@@ -688,6 +688,7 @@ async function loadSettings() {
     // Apparence bannière
     const opacity = me.tenant?.hero_overlay_opacity ?? 70;
     const bgColor = me.tenant?.hero_bg_color || '#1a1a2e';
+    const heroMode = me.tenant?.hero_mode || 'manual';
     const slider = document.getElementById('overlayOpacitySlider');
     const label  = document.getElementById('overlayOpacityLabel');
     const picker = document.getElementById('heroBgColorPicker');
@@ -696,6 +697,9 @@ async function loadSettings() {
     if (label)  { label.textContent = opacity + '%'; }
     if (picker) { picker.value = bgColor; }
     if (colorLabel) { colorLabel.textContent = bgColor; }
+    const heroModeRadio = document.querySelector(`input[name="heroMode"][value="${heroMode}"]`);
+    if (heroModeRadio) heroModeRadio.checked = true;
+    toggleHeroMode(heroMode);
 
     const mode = me.tenant?.booking_confirmation || 'automatic';
     const delaysStr = me.tenant?.reminder_delays || String(me.tenant?.reminder_delay_hours || '24');
@@ -754,12 +758,58 @@ async function loadSettings() {
   `).join('');
 }
 
+function toggleHeroMode(mode) {
+  const section = document.getElementById('heroSlideshowSection');
+  if (section) section.style.display = mode === 'slideshow' ? 'block' : 'none';
+  if (mode === 'slideshow') loadHeroSlides();
+}
+
+async function loadHeroSlides() {
+  const res = await authFetch('/api/admin/hero-slides');
+  if (!res?.ok) return;
+  const slides = await res.json();
+  const grid = document.getElementById('heroSlidesGrid');
+  if (!grid) return;
+  if (!slides.length) {
+    grid.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image pour l\'instant.</p>';
+    return;
+  }
+  grid.innerHTML = slides.map(s => `
+    <div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/9;background:var(--border)">
+      <img src="${s.url}" alt="Slide" style="width:100%;height:100%;object-fit:cover;display:block">
+      <button onclick="deleteHeroSlide(${s.id})"
+        style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+async function uploadHeroSlide(input) {
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('image', input.files[0]);
+  const res = await authFetch('/api/admin/hero-slides', { method: 'POST', body: fd });
+  const data = await res?.json();
+  input.value = '';
+  if (res?.ok) { showToast('Image ajoutée au diaporama', 'success'); loadHeroSlides(); }
+  else showToast(data?.error || 'Erreur lors du téléversement', 'error');
+}
+
+async function deleteHeroSlide(id) {
+  if (!confirm('Supprimer cette image du diaporama ?')) return;
+  const res = await authFetch(`/api/admin/hero-slides/${id}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Image supprimée', 'success'); loadHeroSlides(); }
+  else showToast('Erreur lors de la suppression', 'error');
+}
+
 async function saveHeroOverlay() {
-  const opacity = document.getElementById('overlayOpacitySlider')?.value;
-  const color   = document.getElementById('heroBgColorPicker')?.value;
-  const res  = await authFetch('/api/admin/hero-overlay', {
+  const opacity  = document.getElementById('overlayOpacitySlider')?.value;
+  const color    = document.getElementById('heroBgColorPicker')?.value;
+  const heroMode = document.querySelector('input[name="heroMode"]:checked')?.value || 'manual';
+  const res = await authFetch('/api/admin/hero-overlay', {
     method: 'PUT',
-    body: JSON.stringify({ hero_overlay_opacity: parseInt(opacity), hero_bg_color: color })
+    body: JSON.stringify({ hero_overlay_opacity: parseInt(opacity), hero_bg_color: color, hero_mode: heroMode })
   });
   const data = await res?.json();
   if (res?.ok) showToast('Apparence mise à jour', 'success');
