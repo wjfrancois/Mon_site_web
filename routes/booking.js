@@ -165,14 +165,17 @@ router.post('/:slug/appointments', async (req, res) => {
 
   const appt = await db.prepare('INSERT INTO appointments (client_id, barber_id, service_id, date, time, status, notes, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(client.id, barber_id, service_id, date, time, apptStatus, notes || null, t.id);
 
-  // Rappel configurable (défaut 24h)
-  const delayH = parseInt(t.reminder_delay_hours) || 24;
-  const apptDT = new Date(`${date}T${time}`);
-  apptDT.setHours(apptDT.getHours() - delayH);
-  const reminderTime = apptDT.toISOString().slice(0,16).replace('T',' ');
-  const delayLabel = delayH >= 24 ? `${delayH/24 === 1 ? 'demain' : `dans ${delayH/24} jours`}` : `dans ${delayH}h`;
-  const smsMsg = `[${t.name}] Rappel: votre RDV "${service.name}" est ${delayLabel} le ${date} à ${time} avec ${barber.name}. Pour annuler: ${t.phone || ''}`;
-  await db.prepare('INSERT INTO reminders (client_id, appointment_id, message, channel, scheduled_at, tenant_id) VALUES (?, ?, ?, ?, ?, ?)').run(client.id, appt.lastInsertRowid, smsMsg, 'sms', reminderTime, t.id);
+  // Rappels multiples configurables
+  const delaysStr = t.reminder_delays || String(t.reminder_delay_hours || '24');
+  const reminderDelays = [...new Set(delaysStr.split(',').map(Number).filter(Boolean))];
+  for (const delayH of reminderDelays) {
+    const apptDT = new Date(`${date}T${time}`);
+    apptDT.setHours(apptDT.getHours() - delayH);
+    const reminderTime = apptDT.toISOString().slice(0,16).replace('T',' ');
+    const delayLabel = delayH >= 24 ? (delayH === 24 ? 'demain' : `dans ${delayH/24} jours`) : `dans ${delayH}h`;
+    const smsMsg = `[${t.name}] Rappel: votre RDV "${service.name}" est ${delayLabel} le ${date} à ${time} avec ${barber.name}. Pour annuler: ${t.phone || ''}`;
+    await db.prepare('INSERT INTO reminders (client_id, appointment_id, message, channel, scheduled_at, tenant_id) VALUES (?, ?, ?, ?, ?, ?)').run(client.id, appt.lastInsertRowid, smsMsg, 'sms', reminderTime, t.id);
+  }
 
   // Notifications immédiates seulement si confirmé
   if (apptStatus === 'confirmed') {

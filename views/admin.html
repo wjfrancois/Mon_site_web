@@ -477,15 +477,25 @@
           </div>
 
           <div>
-            <label for="reminderDelaySelect" style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.5rem">Délai du rappel automatique</label>
-            <select id="reminderDelaySelect" class="form-input" style="max-width:280px">
-              <option value="72">72 heures avant</option>
-              <option value="48">48 heures avant</option>
-              <option value="36">36 heures avant</option>
-              <option value="24" selected>24 heures avant (défaut)</option>
-              <option value="3">3 heures avant</option>
-            </select>
-            <p style="color:var(--text-light);font-size:0.8rem;margin-top:0.4rem">Le client reçoit un SMS/email de rappel avant son rendez-vous.</p>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.5rem">Rappels automatiques avant le rendez-vous</label>
+            <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:0.75rem">Cochez un ou plusieurs intervalles — un SMS/email sera envoyé à chaque délai sélectionné.</p>
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="72"> 72 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="48"> 48 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="36"> 36 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="24"> 24 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="3"> 3 heures avant
+              </label>
+            </div>
           </div>
 
         </div>

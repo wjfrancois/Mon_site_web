@@ -18,6 +18,7 @@ const VIEWS = path.join(__dirname, 'views');
   try {
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS booking_confirmation TEXT DEFAULT 'automatic'").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_delay_hours INTEGER DEFAULT 24").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_delays TEXT DEFAULT '24'").run();
   } catch(e) {
     console.warn('[Migration] Schema:', e.message);
   }
@@ -68,18 +69,16 @@ app.use('/api/admin/products', requireAuth, require('./routes/products'));
 
 // PUT /api/admin/booking-settings
 app.put('/api/admin/booking-settings', requireAuth, async (req, res) => {
-  const { booking_confirmation, reminder_delay_hours } = req.body;
+  const { booking_confirmation, reminder_delays } = req.body;
   const validModes = ['automatic', 'manual', 'hybrid'];
   const validDelays = [3, 24, 36, 48, 72];
   if (booking_confirmation && !validModes.includes(booking_confirmation)) {
     return res.status(400).json({ error: 'Mode de confirmation invalide' });
   }
-  const delay = parseInt(reminder_delay_hours);
-  if (reminder_delay_hours !== undefined && !validDelays.includes(delay)) {
-    return res.status(400).json({ error: 'Délai de rappel invalide' });
-  }
-  await db.prepare('UPDATE tenants SET booking_confirmation = ?, reminder_delay_hours = ? WHERE id = ?')
-    .run(booking_confirmation || 'automatic', delay || 24, req.tenantId);
+  const delays = Array.isArray(reminder_delays) ? reminder_delays.map(Number).filter(d => validDelays.includes(d)) : [24];
+  if (!delays.length) return res.status(400).json({ error: 'Sélectionnez au moins un délai valide' });
+  await db.prepare('UPDATE tenants SET booking_confirmation = ?, reminder_delays = ? WHERE id = ?')
+    .run(booking_confirmation || 'automatic', delays.join(','), req.tenantId);
   res.json({ message: 'Paramètres sauvegardés' });
 });
 

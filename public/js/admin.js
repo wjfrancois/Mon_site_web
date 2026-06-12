@@ -685,11 +685,13 @@ async function loadSettings() {
   if (meRes?.ok) {
     const me = await meRes.json();
     const mode = me.tenant?.booking_confirmation || 'automatic';
-    const delay = me.tenant?.reminder_delay_hours || 24;
+    const delaysStr = me.tenant?.reminder_delays || String(me.tenant?.reminder_delay_hours || '24');
+    const activeDelays = delaysStr.split(',').map(Number);
     const radio = document.querySelector(`input[name="confirmationMode"][value="${mode}"]`);
     if (radio) radio.checked = true;
-    const delaySelect = document.getElementById('reminderDelaySelect');
-    if (delaySelect) delaySelect.value = String(delay);
+    document.querySelectorAll('input[name="reminderDelay"]').forEach(cb => {
+      cb.checked = activeDelays.includes(parseInt(cb.value));
+    });
   }
 
   // Hero image preview
@@ -741,11 +743,12 @@ async function loadSettings() {
 
 async function saveBookingSettings() {
   const mode = document.querySelector('input[name="confirmationMode"]:checked')?.value;
-  const delay = document.getElementById('reminderDelaySelect')?.value;
+  const delays = [...document.querySelectorAll('input[name="reminderDelay"]:checked')].map(cb => parseInt(cb.value));
   if (!mode) return showToast('Sélectionnez un mode de confirmation', 'error');
+  if (!delays.length) return showToast('Sélectionnez au moins un délai de rappel', 'error');
   const res = await authFetch('/api/admin/booking-settings', {
     method: 'PUT',
-    body: JSON.stringify({ booking_confirmation: mode, reminder_delay_hours: parseInt(delay) })
+    body: JSON.stringify({ booking_confirmation: mode, reminder_delays: delays })
   });
   const data = await res?.json();
   if (res?.ok) showToast('Paramètres sauvegardés', 'success');
