@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Réservation en ligne</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    :root { --tenant-accent: #e2b04a; }
+    .btn-primary { background: var(--tenant-accent) !important; }
+    .step.active .step-num { background: var(--tenant-accent) !important; color: var(--primary) !important; }
+    .step.done .step-num { background: var(--tenant-accent) !important; }
+    .service-card.selected, .barber-card.selected, .time-slot.selected { border-color: var(--tenant-accent) !important; background: color-mix(in srgb, var(--tenant-accent) 8%, white) !important; }
+    .step-connector.done { background: var(--tenant-accent) !important; }
+    .calendar-day.selected { background: var(--tenant-accent) !important; }
+    .btn-primary:hover { filter: brightness(0.9); }
+  </style>
+</head>
+<body class="booking-body">
+
+<!-- HEADER -->
+<header class="booking-header" id="bookingHeader">
+  <a href="#accueil" style="display:flex;align-items:center;gap:0.75rem;text-decoration:none">
+    <img id="salonLogo" class="salon-logo" src="" alt="Logo" style="display:none">
+    <span class="salon-name" id="salonName">Chargement...</span>
+  </a>
+  <div id="headerSocials" class="header-socials"></div>
+</header>
+
+<!-- STICKY NAV -->
+<nav class="booking-nav" id="bookingNav">
+  <div class="booking-nav-inner">
+    <a href="#accueil" class="bnav-link active" data-section="accueil">Accueil</a>
+    <a href="#boutique" class="bnav-link" data-section="boutique">Boutique</a>
+    <a href="#services" class="bnav-link" data-section="services">Nos services</a>
+    <a href="#gallery-section" class="bnav-link" data-section="gallery-section" id="navGalleryLink" style="display:none">Galerie</a>
+    <a href="#reservation" class="bnav-link bnav-cta" data-section="reservation">Rendez-vous</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="booking-hero" id="accueil">
+  <div class="booking-hero-bg" id="heroBg"></div>
+  <div class="booking-hero-bg" id="heroBg2" style="opacity:0"></div>
+  <div class="booking-hero-overlay"></div>
+  <div class="booking-hero-content">
+    <span class="hero-tag" id="heroTag" style="display:none"></span>
+    <h1 id="heroTitle">Réservez votre rendez-vous</h1>
+    <p id="heroSubtitle">Choisissez votre service, votre barbier et votre créneau.</p>
+    <div style="margin-top:2rem">
+      <a href="#reservation" class="btn btn-primary" style="text-decoration:none">
+        <i class="fas fa-calendar-plus"></i> Prendre rendez-vous
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- NOS SERVICES -->
+<section id="services" style="padding:4rem 1.5rem; background:var(--white)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Nos services</h2>
+    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Découvrez nos prestations</p>
+    <div id="servicesShowcase" class="services-showcase-grid"></div>
+  </div>
+</section>
+
+<!-- BOUTIQUE -->
+<section id="boutique" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Notre boutique</h2>
+    <p style="color:var(--text-light);margin-bottom:1.5rem;font-size:0.95rem">Découvrez les produits que nous proposons</p>
+    <div id="boutiqueTypeFilters" class="product-type-filters" style="margin-bottom:0.75rem"></div>
+    <div id="boutiqueBrandFilters" class="product-type-filters" style="margin-bottom:2rem"></div>
+    <div id="boutiqueProducts"></div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery-section" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
+  <div style="max-width:1100px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Notre galerie</h2>
+    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Inspirez-vous de nos réalisations</p>
+    <div id="galleryGrid" class="gallery-public-grid"></div>
+  </div>
+</section>
+
+<!-- BOOKING WIZARD -->
+<section id="reservation" style="padding:4rem 1rem;background:var(--primary)">
+  <div style="max-width:900px;margin:0 auto">
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:white;text-align:center">Prendre rendez-vous</h2>
+    <p style="color:rgba(255,255,255,0.6);text-align:center;margin-bottom:2rem;font-size:0.95rem">Réservez en quelques clics, 24h/24</p>
+    <div class="booking-wizard" id="bookingWizard">
+      <!-- Steps Indicator -->
+      <div class="steps-indicator">
+        <div class="step active" id="step-ind-1"><div class="step-num">1</div><p>Service</p></div>
+        <div class="step-connector" id="conn-1"></div>
+        <div class="step" id="step-ind-2"><div class="step-num">2</div><p>Barbier</p></div>
+        <div class="step-connector" id="conn-2"></div>
+        <div class="step" id="step-ind-3"><div class="step-num">3</div><p>Date & Heure</p></div>
+        <div class="step-connector" id="conn-3"></div>
+        <div class="step" id="step-ind-4"><div class="step-num">4</div><p>Confirmer</p></div>
+      </div>
+      <!-- Step 1 -->
+      <div class="wizard-step" id="wizard-step-1">
+        <h2 class="step-title">Choisissez un service</h2>
+        <div class="services-select-grid" id="serviceGrid">
+          <div class="empty-state"><div class="spinner" style="width:30px;height:30px;border-width:3px;margin:0 auto"></div><p>Chargement...</p></div>
+        </div>
+        <div class="step-nav"><span></span><button class="btn btn-primary" id="btn-step1-next" onclick="goToStep(2)" disabled>Suivant <i class="fas fa-arrow-right"></i></button></div>
+      </div>
+      <!-- Step 2 -->
+      <div class="wizard-step hidden" id="wizard-step-2">
+        <h2 class="step-title">Choisissez votre barbier</h2>
+        <div class="barbers-grid" id="barberGrid">
+          <div class="empty-state"><div class="spinner" style="width:30px;height:30px;border-width:3px;margin:0 auto"></div><p>Chargement...</p></div>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-outline" onclick="goToStep(1)"><i class="fas fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" id="btn-step2-next" onclick="goToStep(3)" disabled>Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+      <!-- Step 3 -->
+      <div class="wizard-step hidden" id="wizard-step-3">
+        <h2 class="step-title">Choisissez une date et une heure</h2>
+        <div class="datetime-picker">
+          <div class="calendar-container">
+            <div class="calendar-nav">
+              <button class="btn-cal-nav" onclick="prevMonth()"><i class="fas fa-chevron-left"></i></button>
+              <span class="cal-month-label" id="calMonthLabel"></span>
+              <button class="btn-cal-nav" onclick="nextMonth()"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
+          </div>
+          <div class="time-slots-container">
+            <h3 id="selectedDateLabel" style="font-size:0.95rem;color:var(--text-light);margin-bottom:1rem">Sélectionnez une date</h3>
+            <div class="time-slots" id="timeSlots"></div>
+          </div>
+        </div>
+        <div class="step-nav">
+          <button class="btn btn-outline" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Retour</button>
+          <button class="btn btn-primary" id="btn-step3-next" onclick="goToStep(4)" disabled>Suivant <i class="fas fa-arrow-right"></i></button>
+        </div>
+      </div>
+      <!-- Step 4 -->
+      <div class="wizard-step hidden" id="wizard-step-4">
+        <h2 class="step-title">Vos informations</h2>
+        <div class="booking-summary" id="bookingSummary"></div>
+        <form id="bookingForm" style="margin-top:1.5rem">
+          <div class="form-row">
+            <div class="form-group"><label>Votre nom *</label><input type="text" id="clientName" class="form-input" placeholder="Jean Dupont" required></div>
+            <div class="form-group"><label>Téléphone *</label><input type="tel" id="clientPhone" class="form-input" placeholder="514-555-0000" required></div>
+          </div>
+          <div class="form-group"><label>Courriel (optionnel)</label><input type="email" id="clientEmail" class="form-input" placeholder="vous@exemple.com"></div>
+          <div class="form-group"><label>Notes (optionnel)</label><textarea id="clientNotes" class="form-input" rows="2" placeholder="Ex: allergie, préférence..."></textarea></div>
+          <div class="step-nav">
+            <button type="button" class="btn btn-outline" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Retour</button>
+            <button type="submit" class="btn btn-primary" id="submitBtn"><i class="fas fa-check"></i> Confirmer le rendez-vous</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SUCCESS SCREEN -->
+<div id="successScreen" class="success-screen hidden">
+  <div class="success-content">
+    <div class="success-icon" id="successIcon"><i class="fas fa-check"></i></div>
+    <h2 id="successTitle">Rendez-vous confirmé !</h2>
+    <p id="confirmationMsg">Votre rendez-vous a été enregistré avec succès.</p>
+    <div class="booking-summary" id="confirmSummary" style="margin:1.5rem 0"></div>
+    <button class="btn btn-primary" onclick="resetBooking()"><i class="fas fa-calendar-plus"></i> Prendre un autre rendez-vous</button>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="booking-footer">
+  <div class="footer-inner">
+    <div id="salonContactInfo" class="footer-contact"></div>
+    <div id="footerSocials" class="footer-socials"></div>
+    <p style="font-size:0.75rem;color:rgba(255,255,255,0.3);margin-top:1rem">Propulsé par Créno</p>
+  </div>
+</footer>
+
+<script src="/js/booking.js"></script>
+
+<!-- Bouton retour en haut -->
+<button id="backToTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Retour en haut"
+  style="position:fixed;bottom:1.5rem;right:1.5rem;width:44px;height:44px;border-radius:50%;background:var(--tenant-accent,#e2b04a);color:var(--primary,#0d1b2e);border:none;cursor:pointer;font-size:1.1rem;box-shadow:0 4px 12px rgba(0,0,0,0.25);display:none;align-items:center;justify-content:center;z-index:200;transition:opacity 0.2s,transform 0.2s">
+  <i class="fas fa-arrow-up"></i>
+</button>
+</body>
+</html>

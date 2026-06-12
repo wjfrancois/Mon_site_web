@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer votre salon – Créno</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+      padding: 1rem;
+    }
+    .onboarding-card {
+      background: white;
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .logo {
+      text-align: center; margin-bottom: 1.5rem;
+    }
+    .logo .icon {
+      width: 56px; height: 56px; border-radius: 14px;
+      background: #1a1a2e;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 0.75rem;
+      font-size: 1.4rem; color: #e2b04a;
+    }
+    .logo h1 { font-family: 'Playfair Display', serif; font-size: 1.4rem; color: #1a1a2e; }
+    .logo p { color: #64748b; font-size: 0.85rem; margin-top: 0.2rem; }
+    .onboarding-steps { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+    .onboarding-step { flex: 1; height: 4px; border-radius: 2px; background: #e2e8f0; transition: background 0.3s; }
+    .onboarding-step.active { background: #e2b04a; }
+    .step-title { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.1rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 500; color: #1e293b; margin-bottom: 0.4rem; }
+    .input-wrap { position: relative; }
+    .input-wrap i.field-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 0.875rem; }
+    input[type="text"], input[type="email"], input[type="tel"], input[type="password"] {
+      width: 100%; padding: 0.7rem 1rem 0.7rem 2.5rem;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.9rem; font-family: inherit;
+      background: #fff; color: #1e293b;
+      transition: all 0.2s; outline: none;
+    }
+    input:focus { border-color: #e2b04a; box-shadow: 0 0 0 3px rgba(226,176,74,0.12); }
+    .toggle-pwd {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 0.875rem; padding: 4px;
+    }
+    .toggle-pwd:hover { color: #64748b; }
+    .plan-select { margin-bottom: 1.25rem; }
+    .plan-select label { margin-bottom: 0.75rem; }
+    .plan-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .plan-option input { display: none; }
+    .plan-option label {
+      display: block; padding: 0.6rem 0.25rem; border: 2px solid #e2e8f0;
+      border-radius: 8px; text-align: center; cursor: pointer;
+      font-size: 0.8rem; font-weight: 600; color: #64748b;
+      transition: all 0.2s;
+    }
+    .plan-option label .plan-price-sm { display: block; font-size: 1rem; color: #1a1a2e; font-weight: 800; margin-bottom: 2px; }
+    .plan-option input:checked + label { border-color: #e2b04a; background: rgba(226,176,74,0.08); color: #1a1a2e; }
+    .plan-option label:hover { border-color: #e2b04a; }
+    .btn-primary {
+      width: 100%; padding: 0.85rem;
+      background: #e2b04a; color: #1a1a2e;
+      border: none; border-radius: 8px;
+      font-size: 0.95rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      box-shadow: 0 2px 8px rgba(226,176,74,0.35);
+    }
+    .btn-primary:hover { background: #c9962e; }
+    .btn-primary:disabled { opacity: 0.6; pointer-events: none; }
+    .btn-secondary {
+      width: 100%; padding: 0.75rem;
+      background: transparent; color: #64748b;
+      border: 1.5px solid #e2e8f0; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 500; font-family: inherit;
+      cursor: pointer; transition: all 0.2s;
+      margin-top: 0.75rem;
+    }
+    .btn-secondary:hover { border-color: #94a3b8; color: #1e293b; }
+    .error-msg {
+      display: none; background: #fef2f2; border: 1px solid #fecaca;
+      color: #dc2626; border-radius: 8px; padding: 0.75rem 1rem;
+      font-size: 0.875rem; margin-bottom: 1rem;
+      align-items: center; gap: 0.5rem;
+    }
+    .error-msg.show { display: flex; }
+    .login-link {
+      text-align: center; margin-top: 1.25rem;
+      color: #64748b; font-size: 0.85rem;
+    }
+    .login-link a { color: #e2b04a; font-weight: 600; text-decoration: none; }
+    .login-link a:hover { text-decoration: underline; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(26,26,46,0.3);
+      border-top-color: #1a1a2e; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div class="onboarding-card">
+  <div class="logo">
+    <div class="icon"><i class="fas fa-cut"></i></div>
+    <h1>Créno</h1>
+    <p>Créez votre salon en 2 minutes</p>
+  </div>
+
+  <!-- Steps indicator -->
+  <div class="onboarding-steps">
+    <div class="onboarding-step active" id="step-bar-1"></div>
+    <div class="onboarding-step" id="step-bar-2"></div>
+  </div>
+
+  <!-- Error message -->
+  <div class="error-msg" id="errorMsg">
+    <i class="fas fa-exclamation-circle"></i>
+    <span id="errorText">Une erreur est survenue.</span>
+  </div>
+
+  <!-- STEP 1: Salon info -->
+  <div id="step1">
+    <p class="step-title"><i class="fas fa-store" style="color:#e2b04a;margin-right:6px"></i> Votre salon</p>
+    <form id="step1Form">
+      <div class="form-group">
+        <label for="salonName">Nom du salon *</label>
+        <div class="input-wrap">
+          <i class="fas fa-store field-icon"></i>
+          <input type="text" id="salonName" placeholder="Ex: Fenix Barbier" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="salonPhone">Téléphone</label>
+        <div class="input-wrap">
+          <i class="fas fa-phone field-icon"></i>
+          <input type="tel" id="salonPhone" placeholder="514-555-0000">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="salonAddress">Adresse</label>
+        <div class="input-wrap">
+          <i class="fas fa-map-marker-alt field-icon"></i>
+          <input type="text" id="salonAddress" placeholder="123 rue principale, Montréal">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary">
+        Suivant <i class="fas fa-arrow-right"></i>
+      </button>
+    </form>
+    <p class="login-link">Déjà inscrit ? <a href="/login">Se connecter</a></p>
+  </div>
+
+  <!-- STEP 2: Account info -->
+  <div id="step2" class="hidden">
+    <p class="step-title"><i class="fas fa-user-circle" style="color:#e2b04a;margin-right:6px"></i> Votre compte</p>
+    <form id="step2Form">
+      <div class="form-group">
+        <label for="ownerName">Votre prénom et nom *</label>
+        <div class="input-wrap">
+          <i class="fas fa-user field-icon"></i>
+          <input type="text" id="ownerName" placeholder="Jean Dupont" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="ownerEmail">Adresse courriel *</label>
+        <div class="input-wrap">
+          <i class="fas fa-envelope field-icon"></i>
+          <input type="email" id="ownerEmail" placeholder="vous@exemple.com" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="ownerPassword">Mot de passe *</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock field-icon"></i>
+          <input type="password" id="ownerPassword" placeholder="Au moins 6 caractères" required minlength="6">
+          <button type="button" class="toggle-pwd" onclick="togglePwd()" tabindex="-1">
+            <i class="fas fa-eye" id="toggleIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Plan selection -->
+      <div class="plan-select">
+        <label>Plan choisi</label>
+        <div class="plan-options">
+          <div class="plan-option">
+            <input type="radio" name="plan" id="plan-starter" value="starter">
+            <label for="plan-starter">
+              <span class="plan-price-sm">29 $</span>
+              Starter
+            </label>
+          </div>
+          <div class="plan-option">
+            <input type="radio" name="plan" id="plan-pro" value="pro" checked>
+            <label for="plan-pro">
+              <span class="plan-price-sm">59 $</span>
+              Pro
+            </label>
+          </div>
+          <div class="plan-option">
+            <input type="radio" name="plan" id="plan-business" value="business">
+            <label for="plan-business">
+              <span class="plan-price-sm">99 $</span>
+              Business
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary" id="submitBtn">
+        <i class="fas fa-rocket"></i> Créer mon salon — Essai gratuit 30 jours
+      </button>
+      <button type="button" class="btn-secondary" onclick="backToStep1()">
+        <i class="fas fa-arrow-left"></i> Retour
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Pre-select plan from URL param
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get('plan');
+    if (plan && ['starter','pro','business'].includes(plan)) {
+      const radio = document.getElementById(`plan-${plan}`);
+      if (radio) radio.checked = true;
+    }
+  })();
+
+  // Step 1 → Step 2
+  document.getElementById('step1Form').addEventListener('submit', e => {
+    e.preventDefault();
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+    document.getElementById('step-bar-1').classList.add('active');
+    document.getElementById('step-bar-2').classList.add('active');
+    document.getElementById('errorMsg').classList.remove('show');
+    document.getElementById('ownerName').focus();
+  });
+
+  function backToStep1() {
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step1').classList.remove('hidden');
+    document.getElementById('step-bar-2').classList.remove('active');
+    document.getElementById('errorMsg').classList.remove('show');
+  }
+
+  // Step 2 → Submit
+  document.getElementById('step2Form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    const errEl = document.getElementById('errorMsg');
+    errEl.classList.remove('show');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Création en cours...';
+
+    const plan = document.querySelector('input[name="plan"]:checked')?.value || 'pro';
+
+    const body = {
+      shopName: document.getElementById('salonName').value,
+      phone: document.getElementById('salonPhone').value,
+      address: document.getElementById('salonAddress').value,
+      ownerName: document.getElementById('ownerName').value,
+      email: document.getElementById('ownerEmail').value,
+      password: document.getElementById('ownerPassword').value,
+      plan
+    };
+
+    try {
+      const res = await fetch('/api/onboarding/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('refreshToken', data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(data.user || {}));
+        localStorage.setItem('tenant', JSON.stringify({ slug: data.tenantSlug, trial_ends: data.trialEnds }));
+        window.location.href = '/admin';
+      } else {
+        document.getElementById('errorText').textContent = data.error || 'Erreur lors de la création du compte.';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-rocket"></i> Créer mon salon — Essai gratuit 30 jours';
+      }
+    } catch {
+      document.getElementById('errorText').textContent = 'Erreur de connexion. Réessayez.';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-rocket"></i> Créer mon salon — Essai gratuit 30 jours';
+    }
+  });
+
+  function togglePwd() {
+    const input = document.getElementById('ownerPassword');
+    const icon = document.getElementById('toggleIcon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'fas fa-eye-slash';
+    } else {
+      input.type = 'password';
+      icon.className = 'fas fa-eye';
+    }
+  }
+</script>
+</body>
+</html>

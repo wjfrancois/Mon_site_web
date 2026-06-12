@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créno – Plateforme Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #263448;
+      --border: rgba(255,255,255,0.08);
+      --accent: #6366f1;
+      --accent-dark: #4f46e5;
+      --gold: #e2b04a;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --green: #10b981;
+      --red: #ef4444;
+      --orange: #f59e0b;
+      --blue: #3b82f6;
+      --radius: 12px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .hidden { display: none !important; }
+
+    /* ─── LOGIN ─── */
+    #loginView {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 400px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .login-logo {
+      text-align: center; margin-bottom: 2rem;
+    }
+    .login-logo .badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
+      color: var(--accent); border-radius: 999px; padding: 0.35rem 1rem;
+      font-size: 0.75rem; font-weight: 600; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .login-logo h1 { font-size: 1.6rem; font-weight: 800; }
+    .login-logo p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); margin-bottom: 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .input-wrap { position: relative; }
+    .input-wrap i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.875rem; }
+    .form-input {
+      width: 100%; padding: 0.75rem 1rem 0.75rem 2.75rem;
+      background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 0.9rem; font-family: inherit; outline: none; transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .btn-login {
+      width: 100%; padding: 0.85rem;
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+    }
+    .btn-login:hover { background: var(--accent-dark); }
+    .btn-login:disabled { opacity: 0.6; pointer-events: none; }
+    .error-msg {
+      display: none; background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5; border-radius: 8px; padding: 0.75rem 1rem;
+      font-size: 0.875rem; margin-bottom: 1rem; align-items: center; gap: 0.5rem;
+    }
+    .error-msg.show { display: flex; }
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── DASHBOARD ─── */
+    #dashView { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem; height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-brand .icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      display: flex; align-items: center; justify-content: center; font-size: 1rem; color: #fff;
+    }
+    .topbar-brand h1 { font-size: 1rem; font-weight: 700; }
+    .topbar-brand .sub { font-size: 0.75rem; color: var(--muted); }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .admin-badge {
+      background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
+      color: var(--accent); border-radius: 6px; padding: 0.25rem 0.6rem;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .btn-logout {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+      border-radius: 8px; padding: 0.4rem 0.85rem; font-size: 0.8rem; font-family: inherit;
+      cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-logout:hover { color: var(--red); border-color: var(--red); }
+
+    .main-content { flex: 1; padding: 2rem 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+
+    /* KPI Cards */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .kpi-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .kpi-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.4rem; }
+    .kpi-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .kpi-sub { font-size: 0.75rem; color: var(--muted); }
+    .kpi-card.accent .kpi-value { color: var(--accent); }
+    .kpi-card.green  .kpi-value { color: var(--green); }
+    .kpi-card.gold   .kpi-value { color: var(--gold); }
+    .kpi-card.blue   .kpi-value { color: var(--blue); }
+
+    /* Plan strip */
+    .plans-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .plan-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.25rem; text-align: center;
+    }
+    .plan-card .plan-name { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 0.4rem; }
+    .plan-card .plan-count { font-size: 1.75rem; font-weight: 800; }
+    .plan-card .plan-rev { font-size: 0.8rem; color: var(--gold); margin-top: 0.25rem; }
+    .plan-card .plan-sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.1rem; }
+
+    /* Table section */
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .section-title { font-size: 1rem; font-weight: 700; }
+    .search-input {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      color: var(--text); font-size: 0.85rem; font-family: inherit; outline: none;
+      padding: 0.5rem 0.85rem 0.5rem 2.25rem; width: 220px; transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-wrap { position: relative; }
+    .search-wrap i { position: absolute; left: 0.7rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.8rem; }
+
+    .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      padding: 0.85rem 1rem; text-align: left;
+      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    td { padding: 0.85rem 1rem; font-size: 0.875rem; vertical-align: middle; }
+    .salon-name { font-weight: 600; }
+    .salon-owner { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .stat-chip { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.75rem; color: var(--muted); }
+    .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+    .badge-active   { background: rgba(16,185,129,0.15); color: #34d399; }
+    .badge-trialing { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .badge-cancelled{ background: rgba(239,68,68,0.12);  color: #fca5a5; }
+    .badge-past_due { background: rgba(245,158,11,0.15); color: #fcd34d; }
+    .badge-starter  { background: rgba(148,163,184,0.15); color: #94a3b8; }
+    .badge-pro      { background: rgba(99,102,241,0.15);  color: #a5b4fc; }
+    .badge-business { background: rgba(226,176,74,0.15);  color: #e2b04a; }
+    .btn-sm {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500;
+      font-family: inherit; cursor: pointer; border: 1px solid; transition: all 0.2s; text-decoration: none; white-space: nowrap;
+    }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
+    .btn-outline { background: transparent; border-color: var(--border); color: var(--muted); }
+    .btn-outline:hover { border-color: var(--muted); color: var(--text); }
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .empty-row td { text-align: center; padding: 3rem; color: var(--muted); }
+
+    @media (max-width: 768px) {
+      .main-content { padding: 1rem; }
+      .plans-strip { grid-template-columns: 1fr; }
+      .table-wrap { overflow-x: auto; }
+      .search-input { width: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── LOGIN ─── -->
+<div id="loginView">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="badge"><i class="fas fa-shield-halved"></i> Accès restreint</div>
+      <h1>Créno</h1>
+      <p>Administration de la plateforme</p>
+    </div>
+
+    <div class="error-msg" id="loginError">
+      <i class="fas fa-exclamation-circle"></i>
+      <span id="loginErrorText">Identifiants incorrects.</span>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label class="form-label">Adresse courriel</label>
+        <div class="input-wrap">
+          <i class="fas fa-envelope"></i>
+          <input type="email" class="form-input" id="loginEmail" placeholder="admin@plateforme.com" required autocomplete="email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Mot de passe</label>
+        <div class="input-wrap">
+          <i class="fas fa-lock"></i>
+          <input type="password" class="form-input" id="loginPwd" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+      </div>
+      <button type="submit" class="btn-login" id="loginBtn">
+        <i class="fas fa-sign-in-alt"></i> Accéder à la plateforme
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- ─── DASHBOARD ─── -->
+<div id="dashView" class="hidden">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="icon"><i class="fas fa-cut"></i></div>
+      <div>
+        <h1>Créno</h1>
+        <div class="sub">Tableau de bord plateforme</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="admin-badge"><i class="fas fa-shield-halved"></i> Super Admin</span>
+      <button class="btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Déconnexion</button>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- KPI row -->
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card accent">
+        <div class="kpi-label"><i class="fas fa-store"></i> Total salons</div>
+        <div class="kpi-value" id="kpiTotal">—</div>
+        <div class="kpi-sub" id="kpiSignups">— nouveaux (30j)</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label"><i class="fas fa-check-circle"></i> Abonnés actifs</div>
+        <div class="kpi-value" id="kpiActive">—</div>
+        <div class="kpi-sub" id="kpiPastDue">— en retard de paiement</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label"><i class="fas fa-flask"></i> En période d'essai</div>
+        <div class="kpi-value" id="kpiTrialing">—</div>
+        <div class="kpi-sub" id="kpiCancelled">— annulés</div>
+      </div>
+      <div class="kpi-card gold">
+        <div class="kpi-label"><i class="fas fa-dollar-sign"></i> MRR</div>
+        <div class="kpi-value" id="kpiMRR">—</div>
+        <div class="kpi-sub" id="kpiAppts">— RDV ce mois</div>
+      </div>
+    </div>
+
+    <!-- Plan breakdown -->
+    <div class="plans-strip" id="planStrip">
+      <div class="plan-card">
+        <div class="plan-name">Starter · 29 $/mo</div>
+        <div class="plan-count" id="planStarterCount">—</div>
+        <div class="plan-rev"  id="planStarterRev">—</div>
+        <div class="plan-sub" id="planStarterSub">— en essai</div>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Pro · 59 $/mo</div>
+        <div class="plan-count" id="planProCount">—</div>
+        <div class="plan-rev"  id="planProRev">—</div>
+        <div class="plan-sub" id="planProSub">— en essai</div>
+      </div>
+      <div class="plan-card">
+        <div class="plan-name">Business · 99 $/mo</div>
+        <div class="plan-count" id="planBizCount">—</div>
+        <div class="plan-rev"  id="planBizRev">—</div>
+        <div class="plan-sub" id="planBizSub">— en essai</div>
+      </div>
+    </div>
+
+    <!-- Salons table -->
+    <div class="section-header">
+      <div class="section-title"><i class="fas fa-store" style="color:var(--accent);margin-right:0.5rem"></i>Tous les salons</div>
+      <div class="search-wrap">
+        <i class="fas fa-search"></i>
+        <input type="text" class="search-input" id="searchInput" placeholder="Rechercher un salon…" oninput="filterTable(this.value)">
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table id="salonTable">
+        <thead>
+          <tr>
+            <th>Salon</th>
+            <th>Plan</th>
+            <th>Statut</th>
+            <th>Barbiers</th>
+            <th>Clients</th>
+            <th>RDV total</th>
+            <th>Inscrit le</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="salonTbody">
+          <tr class="empty-row"><td colspan="8"><div class="spinner" style="margin:0 auto"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ─── TWILIO PLATFORM CONFIG ─── -->
+    <div style="margin-top:2.5rem">
+      <div class="section-header" style="margin-bottom:1rem">
+        <div class="section-title">
+          <i class="fas fa-comment-sms" style="color:var(--accent);margin-right:0.5rem"></i>Configuration SMS — Twilio
+        </div>
+        <span id="twilioStatusBadge"
+          style="font-size:0.75rem;padding:4px 12px;border-radius:999px;font-weight:600;background:rgba(148,163,184,0.15);color:var(--muted)">
+          ○ Non configuré
+        </span>
+      </div>
+
+      <div class="table-wrap" style="padding:1.5rem;display:grid;gap:1.25rem">
+        <p style="color:var(--muted);font-size:0.875rem;margin:0">
+          Ces identifiants sont utilisés pour envoyer les SMS de confirmation et de rappel à tous les salons de la plateforme.
+          Le Auth Token n'est jamais retourné par l'API après sauvegarde.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+              Account SID
+            </label>
+            <input type="text" id="tSid" class="form-input" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"
+              style="padding-left:1rem">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+              Numéro Twilio
+            </label>
+            <input type="text" id="tPhone" class="form-input" placeholder="+15140000000" autocomplete="off"
+              style="padding-left:1rem">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+            Auth Token <span style="font-weight:400;text-transform:none">(laissez vide pour conserver l'actuel)</span>
+          </label>
+          <div style="position:relative">
+            <input type="password" id="tToken" class="form-input" placeholder="••••••••••••••••••••••••••••••••"
+              autocomplete="new-password" style="padding-left:1rem;padding-right:2.5rem">
+            <button type="button" onclick="toggleTToken()"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted)">
+              <i class="fas fa-eye" id="tTokenEye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
+          <button class="btn-sm btn-primary" onclick="saveTwilio()"><i class="fas fa-save"></i> Sauvegarder</button>
+          <button class="btn-sm btn-outline" onclick="showTwilioTest()" id="tTestBtn" disabled>
+            <i class="fas fa-paper-plane"></i> SMS de test
+          </button>
+          <button class="btn-sm" onclick="deleteTwilio()" id="tDeleteBtn"
+            style="display:none;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#fca5a5">
+            <i class="fas fa-trash"></i> Supprimer
+          </button>
+        </div>
+
+        <!-- Zone test SMS -->
+        <div id="tTestZone" style="display:none;border-top:1px solid var(--border);padding-top:1rem">
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+            Numéro destinataire pour le test
+          </label>
+          <div style="display:flex;gap:0.75rem">
+            <input type="tel" id="tTestPhone" class="form-input" placeholder="514-555-0000" style="padding-left:1rem;max-width:240px">
+            <button class="btn-sm btn-primary" onclick="sendTwilioTest()"><i class="fas fa-paper-plane"></i> Envoyer</button>
+            <button class="btn-sm btn-outline" onclick="document.getElementById('tTestZone').style.display='none'">Annuler</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+const SA_TOKEN_KEY = 'saAccessToken';
+const API = '';
+
+// ─── Auth ───
+function getToken() { return localStorage.getItem(SA_TOKEN_KEY); }
+function isLoggedIn() { return !!getToken(); }
+
+async function saFetch(url, opts = {}) {
+  const token = getToken();
+  if (!token) { showLogin(); return null; }
+  opts.headers = { ...opts.headers, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+  const res = await fetch(API + url, opts);
+  if (res.status === 401) { showLogin(); return null; }
+  return res;
+}
+
+// ─── Views ───
+function showLogin() {
+  localStorage.removeItem(SA_TOKEN_KEY);
+  document.getElementById('loginView').classList.remove('hidden');
+  document.getElementById('dashView').classList.add('hidden');
+}
+function showDash() {
+  document.getElementById('loginView').classList.add('hidden');
+  document.getElementById('dashView').classList.remove('hidden');
+  loadStats();
+  loadTenants();
+  loadTwilio();
+}
+function logout() {
+  localStorage.removeItem(SA_TOKEN_KEY);
+  showLogin();
+}
+
+// ─── Login form ───
+document.getElementById('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  const errEl = document.getElementById('loginError');
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Connexion…';
+
+  try {
+    const res = await fetch('/api/superadmin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('loginEmail').value,
+        password: document.getElementById('loginPwd').value
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      localStorage.setItem(SA_TOKEN_KEY, data.accessToken);
+      showDash();
+    } else {
+      document.getElementById('loginErrorText').textContent = data.error || 'Identifiants incorrects.';
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Accéder à la plateforme';
+      document.getElementById('loginPwd').value = '';
+    }
+  } catch {
+    document.getElementById('loginErrorText').textContent = 'Erreur de connexion. Réessayez.';
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Accéder à la plateforme';
+  }
+});
+
+// ─── Stats ───
+async function loadStats() {
+  const res = await saFetch('/api/superadmin/stats');
+  if (!res?.ok) return;
+  const d = await res.json();
+
+  document.getElementById('kpiTotal').textContent    = d.total ?? 0;
+  document.getElementById('kpiSignups').textContent  = `${d.signups_30 ?? 0} nouveaux (30j)`;
+  document.getElementById('kpiActive').textContent   = d.active ?? 0;
+  document.getElementById('kpiPastDue').textContent  = `${d.past_due ?? 0} en retard de paiement`;
+  document.getElementById('kpiTrialing').textContent = d.trialing ?? 0;
+  document.getElementById('kpiCancelled').textContent= `${d.cancelled ?? 0} annulés`;
+  document.getElementById('kpiMRR').textContent      = `${d.mrr ?? 0} $`;
+  document.getElementById('kpiAppts').textContent    = `${d.appts_30 ?? 0} RDV ce mois`;
+
+  const bp = d.by_plan || {};
+  ['starter','pro','business'].forEach(p => {
+    const info = bp[p] || {};
+    const pfx = p === 'business' ? 'Biz' : p.charAt(0).toUpperCase()+p.slice(1);
+    document.getElementById(`plan${pfx}Count`).textContent = (info.active||0) + (info.trialing||0);
+    document.getElementById(`plan${pfx}Rev`).textContent   = `${info.revenue||0} $ MRR`;
+    document.getElementById(`plan${pfx}Sub`).textContent   = `${info.trialing||0} en essai`;
+  });
+}
+
+// ─── Tenants table ───
+let _allTenants = [];
+async function loadTenants() {
+  const res = await saFetch('/api/superadmin/tenants');
+  if (!res?.ok) return;
+  _allTenants = await res.json();
+  renderTenants(_allTenants);
+}
+
+function renderTenants(rows) {
+  const tbody = document.getElementById('salonTbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun salon inscrit.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(t => {
+    const statusBadge = `<span class="badge badge-${t.plan_status}">${labelStatus(t.plan_status)}</span>`;
+    const planBadge   = `<span class="badge badge-${t.plan}">${t.plan}</span>`;
+    const date = t.created_at ? t.created_at.slice(0,10) : '—';
+    const bookingUrl = `/book/${t.slug}`;
+    return `<tr>
+      <td>
+        <div class="salon-name">${esc(t.name)}</div>
+        <div class="salon-owner"><i class="fas fa-user" style="margin-right:4px;opacity:.5"></i>${esc(t.owner_name||'—')} · ${esc(t.owner_email||'')}</div>
+      </td>
+      <td>${planBadge}</td>
+      <td>${statusBadge}</td>
+      <td><span class="stat-chip"><i class="fas fa-scissors"></i>${t.barbers_count||0}</span></td>
+      <td><span class="stat-chip"><i class="fas fa-users"></i>${t.clients_count||0}</span></td>
+      <td><span class="stat-chip"><i class="fas fa-calendar-check"></i>${t.appts_count||0}</span></td>
+      <td style="color:var(--muted);font-size:0.78rem">${date}</td>
+      <td>
+        <div class="actions">
+          <button class="btn-sm btn-primary" onclick="impersonate(${t.id}, '${esc(t.name)}')">
+            <i class="fas fa-user-secret"></i> Accéder
+          </button>
+          <a href="${bookingUrl}" target="_blank" class="btn-sm btn-outline">
+            <i class="fas fa-external-link-alt"></i> Booking
+          </a>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function labelStatus(s) {
+  return { active: 'Actif', trialing: 'Essai', cancelled: 'Annulé', past_due: 'En retard' }[s] || s;
+}
+
+function filterTable(q) {
+  const low = q.toLowerCase();
+  renderTenants(_allTenants.filter(t =>
+    (t.name||'').toLowerCase().includes(low) ||
+    (t.owner_name||'').toLowerCase().includes(low) ||
+    (t.owner_email||'').toLowerCase().includes(low) ||
+    (t.slug||'').toLowerCase().includes(low)
+  ));
+}
+
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Impersonation ───
+async function impersonate(tenantId, name) {
+  if (!confirm(`Accéder à l'admin de "${name}" ?\nUn token temporaire (1h) sera généré.`)) return;
+  const res = await saFetch(`/api/superadmin/impersonate/${tenantId}`, { method: 'POST' });
+  if (!res?.ok) { alert('Erreur lors de l\'impersonation'); return; }
+  const data = await res.json();
+  // Store tenant token, then open /admin in a new tab
+  localStorage.setItem('accessToken', data.accessToken);
+  localStorage.removeItem('refreshToken');
+  window.open('/admin', '_blank');
+}
+
+// ─── Twilio ───
+function updateTwilioBadge(configured) {
+  const badge = document.getElementById('twilioStatusBadge');
+  const testBtn = document.getElementById('tTestBtn');
+  const delBtn  = document.getElementById('tDeleteBtn');
+  if (badge) {
+    badge.textContent = configured ? '✓ Connecté' : '○ Non configuré';
+    badge.style.background = configured ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)';
+    badge.style.color = configured ? '#34d399' : 'var(--muted)';
+  }
+  if (testBtn) testBtn.disabled = !configured;
+  if (delBtn)  delBtn.style.display = configured ? 'inline-flex' : 'none';
+}
+
+async function loadTwilio() {
+  const res = await saFetch('/api/superadmin/platform-settings');
+  if (!res?.ok) return;
+  const d = await res.json();
+  const sidEl   = document.getElementById('tSid');
+  const phoneEl = document.getElementById('tPhone');
+  if (sidEl)   sidEl.value   = d.twilio_sid   || '';
+  if (phoneEl) phoneEl.value = d.twilio_phone || '';
+  updateTwilioBadge(d.twilio_configured || false);
+}
+
+function toggleTToken() {
+  const el = document.getElementById('tToken');
+  const ic = document.getElementById('tTokenEye');
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  ic.className = el.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+async function saveTwilio() {
+  const sid   = document.getElementById('tSid')?.value.trim();
+  const token = document.getElementById('tToken')?.value.trim();
+  const phone = document.getElementById('tPhone')?.value.trim();
+  if (!sid || !phone) return alert('Account SID et numéro Twilio sont obligatoires.');
+  if (!token) return alert('Entrez votre Auth Token pour sauvegarder.');
+  const res = await saFetch('/api/superadmin/platform-settings', {
+    method: 'PUT',
+    body: JSON.stringify({ twilio_sid: sid, twilio_token: token, twilio_phone: phone })
+  });
+  const data = await res?.json();
+  if (res?.ok) {
+    document.getElementById('tToken').value = '';
+    updateTwilioBadge(true);
+    alert('✓ Configuration Twilio sauvegardée.');
+  } else {
+    alert('Erreur : ' + (data?.error || 'Inconnue'));
+  }
+}
+
+async function deleteTwilio() {
+  if (!confirm('Supprimer les identifiants Twilio ?\nLes SMS seront désactivés sur toute la plateforme.')) return;
+  const res = await saFetch('/api/superadmin/platform-settings/twilio', { method: 'DELETE' });
+  if (res?.ok) {
+    document.getElementById('tSid').value   = '';
+    document.getElementById('tPhone').value = '';
+    document.getElementById('tToken').value = '';
+    updateTwilioBadge(false);
+  }
+}
+
+function showTwilioTest() {
+  document.getElementById('tTestZone').style.display = 'block';
+  document.getElementById('tTestPhone').focus();
+}
+
+async function sendTwilioTest() {
+  const to = document.getElementById('tTestPhone')?.value.trim();
+  if (!to) return alert('Entrez un numéro de téléphone.');
+  const res = await saFetch('/api/superadmin/twilio-test', {
+    method: 'POST',
+    body: JSON.stringify({ to })
+  });
+  const data = await res?.json();
+  if (res?.ok) alert(`✓ SMS envoyé ! SID: ${data.sid || '—'}`);
+  else alert('Erreur : ' + (data?.error || 'Inconnue'));
+}
+
+// ─── Init ───
+if (isLoggedIn()) {
+  showDash();
+} else {
+  showLogin();
+}
+</script>
+</body>
+</html>

@@ -6,8 +6,35 @@ const API = '';
 let revenueChart, servicesChart, accountingChart;
 let allClients = [];
 
+// ---- JWT AUTH ----
+const TOKEN_KEY = 'accessToken';
+const REFRESH_KEY = 'refreshToken';
+
+async function authFetch(url, opts = {}) {
+  let token = localStorage.getItem(TOKEN_KEY);
+  if (!token) { window.location.href = '/login'; return null; }
+  const headers = { ...opts.headers, 'Authorization': `Bearer ${token}` };
+  if (!(opts.body instanceof FormData)) headers['Content-Type'] = 'application/json';
+  let res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) {
+    const refresh = localStorage.getItem(REFRESH_KEY);
+    if (refresh) {
+      const r = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: refresh }) });
+      if (r.ok) {
+        const { accessToken } = await r.json();
+        localStorage.setItem(TOKEN_KEY, accessToken);
+        headers['Authorization'] = `Bearer ${accessToken}`;
+        res = await fetch(url, { ...opts, headers });
+      } else { localStorage.clear(); window.location.href = '/login'; return null; }
+    } else { localStorage.clear(); window.location.href = '/login'; return null; }
+  }
+  return res;
+}
+
 // ---- INIT ----
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!localStorage.getItem(TOKEN_KEY)) { window.location.href = '/login'; return; }
+
   initSidebar();
   initDateDisplay();
   loadDashboard();
@@ -16,6 +43,57 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-item[data-page]').forEach(el => {
     el.addEventListener('click', e => { e.preventDefault(); showPage(el.dataset.page); });
   });
+
+  // Charger les infos utilisateur et plan
+  try {
+    const meRes = await authFetch('/api/admin/me');
+    if (meRes?.ok) {
+      const me = await meRes.json();
+      const planBadge = document.getElementById('planBadge');
+      if (planBadge) {
+        planBadge.textContent = me.tenant.plan.toUpperCase();
+        planBadge.className = `plan-badge ${me.tenant.plan_status === 'past_due' ? 'past_due' : me.tenant.plan_status === 'trialing' ? 'trialing' : ''}`;
+      }
+      const userNameEl = document.getElementById('userName');
+      if (userNameEl) userNameEl.textContent = me.user.name || me.user.email;
+      const avatarEl = document.querySelector('.avatar');
+      if (avatarEl) avatarEl.textContent = (me.user.name || me.user.email)[0].toUpperCase();
+
+      if (me.tenant.plan_status === 'trialing' && me.tenant.days_left_trial <= 7) showTrialBanner(me.tenant.days_left_trial);
+      if (me.tenant.plan_status === 'past_due') showPaymentFailedBanner();
+
+      if (me.user.role !== 'owner') {
+        document.querySelectorAll('[data-owner-only]').forEach(el => el.style.display = 'none');
+      }
+      window._tenantBookingUrl = me.booking_url;
+
+      const salonNameEl = document.getElementById('sidebarSalonName');
+      if (salonNameEl && me.tenant?.name) salonNameEl.textContent = me.tenant.name;
+
+      // Branding : couleur accent + titre + logo
+      if (me.tenant?.primary_color) {
+        document.documentElement.style.setProperty('--accent', me.tenant.primary_color);
+        document.documentElement.style.setProperty('--accent-dark', me.tenant.primary_color);
+      }
+      document.title = `${me.tenant?.name || 'Mon Salon'} – Admin`;
+      const sidebarLogoImg = document.getElementById('sidebarLogoImg');
+      const sidebarIconEl  = document.getElementById('sidebarIconEl');
+      if (sidebarLogoImg && me.tenant?.logo_url) {
+        sidebarLogoImg.src = me.tenant.logo_url;
+        sidebarLogoImg.style.display = 'block';
+        if (sidebarIconEl) sidebarIconEl.style.display = 'none';
+      }
+
+      if (me.booking_url) {
+        const card = document.getElementById('dashboardBookingUrl');
+        const link = document.getElementById('dashboardBookingLink');
+        const openBtn = document.getElementById('dashboardBookingOpen');
+        if (card) card.style.display = 'flex';
+        if (link) { link.href = me.booking_url; link.textContent = me.booking_url; }
+        if (openBtn) openBtn.href = me.booking_url;
+      }
+    }
+  } catch(e) { console.error('Error loading user info:', e); }
 });
 
 // ---- SIDEBAR ----
@@ -43,7 +121,10 @@ const pageTitles = {
   reminders: 'Relances',
   accounting: 'Comptabilité',
   reports: 'Rapports',
-  settings: 'Paramètres'
+  settings: 'Paramètres',
+  customization: 'Personnalisation',
+  team: 'Équipe',
+  billing: 'Abonnement'
 };
 
 function showPage(page) {
@@ -54,14 +135,15 @@ function showPage(page) {
   document.getElementById('pageTitle').textContent = pageTitles[page] || page;
   document.getElementById('sidebar').classList.remove('open');
 
-  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, settings: loadSettings };
+  const loaders = { calendar: loadCalendar, appointments: loadAppointments, clients: loadClients, reminders: loadReminders, accounting: loadAccounting, reports: initReports, products: loadProductsPage, services: loadServicesPage, settings: loadSettings, gallery: loadGallery, customization: loadCustomization, team: loadTeam, billing: loadBilling };
   loaders[page]?.();
 }
 
 // ---- DASHBOARD ----
 async function loadDashboard() {
   try {
-    const data = await fetch(`${API}/api/stats/dashboard`).then(r => r.json());
+    const res = await authFetch(`${API}/api/stats/dashboard`);
+    const data = await res.json();
 
     document.getElementById('kpiToday').textContent = data.today_appointments;
     document.getElementById('kpiRevenue').textContent = `${data.month_revenue.toFixed(2)} $`;
@@ -146,21 +228,61 @@ function renderTodayList(data) {
 }
 
 // ---- CALENDAR ----
+let _calendarInitialized = false;
 async function loadCalendar() {
   const dateEl = document.getElementById('calendarDate');
-  if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0,10);
-  dateEl.addEventListener('change', loadCalendar);
-  document.getElementById('calendarBarber').addEventListener('change', loadCalendar);
+  if (!dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+
+  // Attacher les listeners une seule fois
+  if (!_calendarInitialized) {
+    _calendarInitialized = true;
+    dateEl.addEventListener('change', loadCalendar);
+    document.getElementById('calendarBarber').addEventListener('change', loadCalendar);
+  }
 
   await loadBarberSelectOptions('calendarBarber');
+  await refreshCalendar();
+}
+
+async function refreshCalendar() {
+  const dateEl = document.getElementById('calendarDate');
   const date = dateEl.value;
   const barberId = document.getElementById('calendarBarber').value;
+
+  // Afficher le jour formaté en haut
+  const label = document.getElementById('calendarDayLabel');
+  if (label) {
+    const d = new Date(date + 'T12:00:00');
+    label.textContent = d.toLocaleDateString('fr-CA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }
 
   const params = new URLSearchParams({ date });
   if (barberId) params.set('barber_id', barberId);
 
-  const appointments = await fetch(`${API}/api/appointments?${params}`).then(r => r.json());
+  const appointments = await authFetch(`${API}/api/appointments?${params}`).then(r => r.json());
   renderCalendarView(appointments, date, barberId);
+}
+
+function calendarPrevDay() {
+  const dateEl = document.getElementById('calendarDate');
+  const d = new Date(dateEl.value + 'T12:00:00');
+  d.setDate(d.getDate() - 1);
+  dateEl.value = d.toISOString().slice(0, 10);
+  refreshCalendar();
+}
+
+function calendarNextDay() {
+  const dateEl = document.getElementById('calendarDate');
+  const d = new Date(dateEl.value + 'T12:00:00');
+  d.setDate(d.getDate() + 1);
+  dateEl.value = d.toISOString().slice(0, 10);
+  refreshCalendar();
+}
+
+function calendarToday() {
+  const dateEl = document.getElementById('calendarDate');
+  dateEl.value = new Date().toISOString().slice(0, 10);
+  refreshCalendar();
 }
 
 function renderCalendarView(appointments, date, barberId) {
@@ -187,13 +309,24 @@ function renderCalendarView(appointments, date, barberId) {
   hours.forEach(h => {
     html += `<div class="cal-time-label">${h}</div>`;
     barbers.forEach(b => {
-      const appts = appointments.filter(a => a.barber_id === b.id && a.time.slice(0,5) === h);
+      const appts = appointments.filter(a => {
+        if (a.barber_id !== b.id) return false;
+        const [ah, am] = a.time.split(':').map(Number);
+        const apptMin = ah * 60 + am;
+        const [hh, hm] = h.split(':').map(Number);
+        const slotMin = hh * 60 + hm;
+        return apptMin >= slotMin && apptMin < slotMin + 30;
+      });
       let cellHtml = '';
       appts.forEach(a => {
-        const topPercent = 0;
         const heightPercent = Math.min(a.duration / 30 * 100, 200);
-        cellHtml += `<div class="cal-event" style="background:${b.color};top:2px;height:${Math.max(heightPercent - 4, 22)}px" title="${a.client_name} – ${a.service_name}" onclick="changeApptStatus(${a.id})">
-          ${a.time} ${a.client_name}
+        const bgColor = a.status === 'confirmed' ? '#10b981'
+                      : a.status === 'cancelled'  ? '#ef4444'
+                      : a.status === 'completed'  ? '#6366f1'
+                      : b.color;
+        const statusLabel = { confirmed: '✓ ', cancelled: '✗ ', completed: '★ ' }[a.status] || '';
+        cellHtml += `<div class="cal-event" style="background:${bgColor};top:2px;height:${Math.max(heightPercent - 4, 22)}px" title="${a.client_name} – ${a.service_name} (${a.status})" onclick="changeApptStatus(${a.id})">
+          ${statusLabel}${a.time} ${a.client_name}
         </div>`;
       });
       html += `<div class="cal-cell">${cellHtml}</div>`;
@@ -218,7 +351,7 @@ async function loadAppointments() {
   if (status) params.set('status', status);
   if (date) params.set('date', date);
 
-  let appointments = await fetch(`${API}/api/appointments?${params}`).then(r => r.json());
+  let appointments = await authFetch(`${API}/api/appointments?${params}`).then(r => r.json());
   if (search) {
     const s = search.toLowerCase();
     appointments = appointments.filter(a => a.client_name?.toLowerCase().includes(s) || a.service_name?.toLowerCase().includes(s) || a.barber_name?.toLowerCase().includes(s));
@@ -255,7 +388,7 @@ async function loadAppointments() {
 
 async function updateApptStatus(id, status) {
   if (!confirm(`Confirmer le changement de statut: "${status}" ?`)) return;
-  await fetch(`${API}/api/appointments/${id}/status`, {
+  await authFetch(`${API}/api/appointments/${id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status })
@@ -276,7 +409,7 @@ async function loadClients() {
   document.getElementById('clientSearch').addEventListener('input', loadClients);
 
   const params = search ? `?search=${encodeURIComponent(search)}` : '';
-  allClients = await fetch(`${API}/api/clients${params}`).then(r => r.json());
+  allClients = await authFetch(`${API}/api/clients${params}`).then(r => r.json());
 
   const tbody = document.getElementById('clientsBody');
   if (!allClients.length) {
@@ -302,7 +435,7 @@ async function loadClients() {
 
 async function deleteClient(id) {
   if (!confirm('Supprimer ce client ?')) return;
-  await fetch(`${API}/api/clients/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/clients/${id}`, { method: 'DELETE' });
   showToast('Client supprimé', 'success');
   loadClients();
 }
@@ -313,7 +446,7 @@ async function loadReminders() {
   document.getElementById('reminderFilter').addEventListener('change', loadReminders);
 
   const params = status ? `?status=${status}` : '';
-  const reminders = await fetch(`${API}/api/reminders${params}`).then(r => r.json());
+  const reminders = await authFetch(`${API}/api/reminders${params}`).then(r => r.json());
 
   const tbody = document.getElementById('remindersBody');
   if (!reminders.length) {
@@ -339,7 +472,7 @@ async function loadReminders() {
 }
 
 async function sendReminder(id) {
-  const res = await fetch(`${API}/api/reminders/${id}/send`, { method: 'POST' });
+  const res = await authFetch(`${API}/api/reminders/${id}/send`, { method: 'POST' });
   const data = await res.json();
   showToast(data.message || 'Rappel envoyé', 'success');
   loadReminders();
@@ -347,7 +480,7 @@ async function sendReminder(id) {
 
 async function deleteReminder(id) {
   if (!confirm('Supprimer ce rappel ?')) return;
-  await fetch(`${API}/api/reminders/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/reminders/${id}`, { method: 'DELETE' });
   showToast('Rappel supprimé', 'success');
   loadReminders();
 }
@@ -355,10 +488,12 @@ async function deleteReminder(id) {
 // ---- ACCOUNTING ----
 async function loadAccounting() {
   const period = document.getElementById('accountingPeriod').value;
-  const [summary, transactions] = await Promise.all([
-    fetch(`${API}/api/accounting/summary?period=${period}`).then(r => r.json()),
-    fetch(`${API}/api/accounting/transactions?${periodToMonthParam(period)}`).then(r => r.json())
+  const [summaryRes, transactionsRes] = await Promise.all([
+    authFetch(`/api/accounting/summary?period=${period}`),
+    authFetch(`/api/accounting/transactions?${periodToMonthParam(period)}`)
   ]);
+  if (!summaryRes?.ok || !transactionsRes?.ok) return;
+  const [summary, transactions] = await Promise.all([summaryRes.json(), transactionsRes.json()]);
 
   document.getElementById('accountingSummary').innerHTML = `
     <div class="acc-card acc-income"><span class="label">Revenus</span><span class="value">${summary.total_income.toFixed(2)} $</span></div>
@@ -405,7 +540,7 @@ function renderAccountingChart(data) {
 
 async function deleteTransaction(id) {
   if (!confirm('Supprimer cette transaction ?')) return;
-  await fetch(`${API}/api/accounting/transactions/${id}`, { method: 'DELETE' });
+  await authFetch(`${API}/api/accounting/transactions/${id}`, { method: 'DELETE' });
   showToast('Transaction supprimée', 'success');
   loadAccounting();
 }
@@ -430,7 +565,7 @@ async function generateReport() {
   const end = document.getElementById('reportEnd').value;
   if (!start || !end) { showToast('Veuillez sélectionner les dates', 'error'); return; }
 
-  const data = await fetch(`${API}/api/stats/reports?start_date=${start}&end_date=${end}`).then(r => r.json());
+  const data = await authFetch(`${API}/api/stats/reports?start_date=${start}&end_date=${end}`).then(r => r.json());
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -535,10 +670,67 @@ async function generateReport() {
 
 // ---- SETTINGS ----
 async function loadSettings() {
-  const [barbers, services] = await Promise.all([
-    fetch(`${API}/api/barbers`).then(r => r.json()),
-    fetch(`${API}/api/services`).then(r => r.json())
+  const [barbersRes, servicesRes, siteSettingsRes, meRes] = await Promise.all([
+    authFetch('/api/barbers'),
+    authFetch('/api/services'),
+    authFetch('/api/settings'),
+    authFetch('/api/admin/me')
   ]);
+  if (!barbersRes?.ok || !servicesRes?.ok || !siteSettingsRes?.ok) return;
+  const [barbers, services, siteSettings] = await Promise.all([
+    barbersRes.json(), servicesRes.json(), siteSettingsRes.json()
+  ]);
+
+  // Hero overlay settings + booking settings
+  if (meRes?.ok) {
+    const me = await meRes.json();
+
+    // Apparence bannière
+    const opacity = me.tenant?.hero_overlay_opacity ?? 70;
+    const bgColor = me.tenant?.hero_bg_color || '#1a1a2e';
+    const heroMode = me.tenant?.hero_mode || 'manual';
+    const slider = document.getElementById('overlayOpacitySlider');
+    const label  = document.getElementById('overlayOpacityLabel');
+    const picker = document.getElementById('heroBgColorPicker');
+    const colorLabel = document.getElementById('heroBgColorLabel');
+    if (slider) { slider.value = opacity; }
+    if (label)  { label.textContent = opacity + '%'; }
+    if (picker) { picker.value = bgColor; }
+    if (colorLabel) { colorLabel.textContent = bgColor; }
+    const heroModeRadio = document.querySelector(`input[name="heroMode"][value="${heroMode}"]`);
+    if (heroModeRadio) heroModeRadio.checked = true;
+    toggleHeroMode(heroMode);
+
+
+    const mode = me.tenant?.booking_confirmation || 'automatic';
+    const delaysStr = me.tenant?.reminder_delays || String(me.tenant?.reminder_delay_hours || '24');
+    const activeDelays = delaysStr.split(',').map(Number);
+    const radio = document.querySelector(`input[name="confirmationMode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    document.querySelectorAll('input[name="reminderDelay"]').forEach(cb => {
+      cb.checked = activeDelays.includes(parseInt(cb.value));
+    });
+  }
+
+  // Hero image preview
+  const img = document.getElementById('heroPreviewImg');
+  const placeholder = document.getElementById('heroPlaceholder');
+  const overlay = document.getElementById('heroPreviewOverlay');
+  if (siteSettings.hero_image) {
+    img.src = siteSettings.hero_image;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+    overlay.style.display = 'flex';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'block';
+    overlay.style.display = 'none';
+  }
+
+  // Hero texts
+  document.getElementById('settingHeroTag').value = siteSettings.hero_tag || '';
+  document.getElementById('settingHeroTitle').value = siteSettings.hero_title || '';
+  document.getElementById('settingHeroSubtitle').value = siteSettings.hero_subtitle || '';
 
   document.getElementById('barbersList').innerHTML = barbers.map(b => `
     <div class="settings-item">
@@ -548,6 +740,7 @@ async function loadSettings() {
       </div>
       <div class="action-btns">
         <button class="btn-table btn-edit" onclick="openBarberModal(${b.id})">Modifier</button>
+        <button class="btn-table btn-delete" onclick="deleteBarber(${b.id}, '${b.name.replace(/'/g, "\\'")}')">✗</button>
       </div>
     </div>
   `).join('');
@@ -555,8 +748,8 @@ async function loadSettings() {
   document.getElementById('servicesList').innerHTML = services.map(s => `
     <div class="settings-item">
       <div class="info">
-        <div class="name">${s.name}</div>
-        <div class="meta">${s.duration} min — ${s.price.toFixed(2)} $</div>
+        <div class="name"><i class="${s.icon || 'fas fa-cut'}" style="margin-right:0.4rem;opacity:0.6"></i>${s.name}</div>
+        <div class="meta">${s.duration} min — ${parseFloat(s.price).toFixed(2)} $</div>
       </div>
       <div class="action-btns">
         <button class="btn-table btn-edit" onclick="openServiceModal(${s.id})">Modifier</button>
@@ -566,11 +759,211 @@ async function loadSettings() {
   `).join('');
 }
 
+function toggleHeroMode(mode) {
+  const section = document.getElementById('heroSlideshowSection');
+  if (section) section.style.display = mode === 'slideshow' ? 'block' : 'none';
+  if (mode === 'slideshow') loadHeroSlides();
+}
+
+async function loadHeroSlides() {
+  const res = await authFetch('/api/admin/hero-slides');
+  if (!res?.ok) return;
+  const slides = await res.json();
+  const grid = document.getElementById('heroSlidesGrid');
+  const countEl = document.getElementById('heroSlideCount');
+  if (!grid) return;
+  if (countEl) countEl.textContent = slides.length ? `(${slides.length} image${slides.length > 1 ? 's' : ''})` : '';
+  if (!slides.length) {
+    grid.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image — ajoutez au moins 2 photos pour activer le diaporama.</p>';
+    return;
+  }
+  grid.innerHTML = slides.map(s => `
+    <div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/9;background:var(--border)">
+      <img src="${s.url}" alt="Slide" style="width:100%;height:100%;object-fit:cover;display:block">
+      <button onclick="deleteHeroSlide(${s.id})"
+        style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center"
+        title="Supprimer cette image">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+async function uploadHeroSlides(input) {
+  if (!input.files.length) return;
+  const files = [...input.files];
+  input.value = '';
+  let ok = 0, err = 0;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await authFetch('/api/admin/hero-slides', { method: 'POST', body: fd });
+    if (res?.ok) ok++; else err++;
+  }
+  if (ok) showToast(`${ok} image${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} au diaporama`, 'success');
+  if (err) showToast(`${err} fichier(s) refusé(s)`, 'error');
+  loadHeroSlides();
+}
+
+async function deleteHeroSlide(id) {
+  if (!confirm('Supprimer cette image du diaporama ?')) return;
+  const res = await authFetch(`/api/admin/hero-slides/${id}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Image supprimée', 'success'); loadHeroSlides(); }
+  else showToast('Erreur lors de la suppression', 'error');
+}
+
+async function saveHeroOverlay() {
+  const opacity  = document.getElementById('overlayOpacitySlider')?.value;
+  const color    = document.getElementById('heroBgColorPicker')?.value;
+  const heroMode = document.querySelector('input[name="heroMode"]:checked')?.value || 'manual';
+  const res = await authFetch('/api/admin/hero-overlay', {
+    method: 'PUT',
+    body: JSON.stringify({ hero_overlay_opacity: parseInt(opacity), hero_bg_color: color, hero_mode: heroMode })
+  });
+  const data = await res?.json();
+  if (res?.ok) showToast('Apparence mise à jour', 'success');
+  else showToast(data?.error || 'Erreur', 'error');
+}
+
+async function saveBookingSettings() {
+  const mode = document.querySelector('input[name="confirmationMode"]:checked')?.value;
+  const delays = [...document.querySelectorAll('input[name="reminderDelay"]:checked')].map(cb => parseInt(cb.value));
+  if (!mode) return showToast('Sélectionnez un mode de confirmation', 'error');
+  if (!delays.length) return showToast('Sélectionnez au moins un délai de rappel', 'error');
+  const res = await authFetch('/api/admin/booking-settings', {
+    method: 'PUT',
+    body: JSON.stringify({ booking_confirmation: mode, reminder_delays: delays })
+  });
+  const data = await res?.json();
+  if (res?.ok) showToast('Paramètres sauvegardés', 'success');
+  else showToast(data?.error || 'Erreur', 'error');
+}
+
 async function deleteService(id) {
-  if (!confirm('Désactiver ce service ?')) return;
-  await fetch(`${API}/api/services/${id}`, { method: 'DELETE' });
-  showToast('Service désactivé', 'success');
-  loadSettings();
+  if (!confirm('Supprimer ce service ?\nIl ne sera plus disponible à la réservation.')) return;
+  await authFetch(`${API}/api/services/${id}`, { method: 'DELETE' });
+  showToast('Service supprimé', 'success');
+  loadServicesPage();
+}
+
+// ---- PRODUITS ----
+async function loadProductsPage() {
+  const res = await authFetch(`${API}/api/admin/products`);
+  if (!res?.ok) return;
+  const products = await res.json();
+  const grid = document.getElementById('productsAdminGrid');
+  if (!grid) return;
+
+  // Build datalist options for type autocomplete
+  const types = [...new Set(products.map(p => p.type).filter(Boolean))];
+  document.getElementById('productTypeList').innerHTML = types.map(t => `<option value="${t}">`).join('');
+
+  if (!products.length) {
+    grid.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:3rem">Aucun produit. Cliquez sur « Nouveau produit » pour commencer.</p>';
+    return;
+  }
+  grid.innerHTML = products.map(p => `
+    <div class="product-admin-card">
+      <div class="pac-photo">
+        ${p.photo_url
+          ? `<img src="${p.photo_url}" alt="${p.name}" onclick="openProductModal(${p.id})">`
+          : `<div class="pac-no-photo" onclick="openProductModal(${p.id})"><i class="fas fa-box-open"></i></div>`}
+      </div>
+      <div class="pac-info">
+        <div class="pac-name">${p.name}</div>
+        <div class="pac-meta">${[p.brand, p.type].filter(Boolean).join(' · ')}</div>
+        <div class="pac-price">${parseFloat(p.price).toFixed(2)} $</div>
+      </div>
+      <div class="pac-actions">
+        <button class="btn btn-sm btn-outline" onclick="openProductModal(${p.id})"><i class="fas fa-pen"></i></button>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openProductModal(id) {
+  document.getElementById('editProductId').value = id || '';
+  document.getElementById('productModalTitle').textContent = id ? 'Modifier le produit' : 'Nouveau produit';
+  document.getElementById('productForm').reset();
+  document.getElementById('productPhotoPreview').style.display = 'none';
+  document.getElementById('productPhotoPlaceholder').style.display = 'flex';
+  document.getElementById('productPhotoInput').value = '';
+
+  if (id) {
+    const products = await authFetch(`${API}/api/admin/products`).then(r => r.json());
+    const p = products.find(x => x.id === id);
+    if (p) {
+      document.getElementById('editProductName').value = p.name || '';
+      document.getElementById('editProductBrand').value = p.brand || '';
+      document.getElementById('editProductType').value = p.type || '';
+      document.getElementById('editProductPrice').value = p.price || 0;
+      document.getElementById('editProductDescription').value = p.description || '';
+      if (p.photo_url) {
+        document.getElementById('productPhotoPreview').src = p.photo_url;
+        document.getElementById('productPhotoPreview').style.display = 'block';
+        document.getElementById('productPhotoPlaceholder').style.display = 'none';
+      }
+    }
+  }
+  openModal('productModal');
+}
+
+function previewProductPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('productPhotoPreview').src = e.target.result;
+    document.getElementById('productPhotoPreview').style.display = 'block';
+    document.getElementById('productPhotoPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Supprimer ce produit définitivement ?')) return;
+  await authFetch(`${API}/api/admin/products/${id}`, { method: 'DELETE' });
+  showToast('Produit supprimé', 'success');
+  loadProductsPage();
+}
+
+async function loadServicesPage() {
+  const res = await authFetch(`${API}/api/services`);
+  if (!res?.ok) return;
+  const services = await res.json();
+  const container = document.getElementById('servicesPageList');
+  if (!container) return;
+  if (!services.length) {
+    container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:2rem">Aucun service. Cliquez sur « Nouveau service » pour commencer.</p>';
+    return;
+  }
+  container.innerHTML = services.map(s => `
+    <div class="service-page-item">
+      <div class="spi-icon"><i class="${s.icon || 'fas fa-cut'}"></i></div>
+      <div class="spi-info">
+        <div class="spi-name">${s.name}</div>
+        <div class="spi-meta">${s.duration} min${s.description ? ' · ' + s.description : ''}</div>
+      </div>
+      <div class="spi-price">${parseFloat(s.price).toFixed(2)} $</div>
+      <div class="spi-actions">
+        <button class="btn btn-sm btn-outline" onclick="openServiceModal(${s.id})"><i class="fas fa-pen"></i> Modifier</button>
+        <button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:none" onclick="deleteService(${s.id})"><i class="fas fa-trash"></i></button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function deleteBarber(id, name) {
+  if (!confirm(`Supprimer le barbier "${name}" ?\n\nNote: impossible s'il a des rendez-vous à venir non annulés.`)) return;
+  const res = await authFetch(`${API}/api/barbers/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (res.ok) {
+    showToast(`Barbier "${name}" désactivé`, 'success');
+    loadSettings();
+  } else {
+    showToast(data.error, 'error');
+  }
 }
 
 // ---- MODALS ----
@@ -583,7 +976,7 @@ function openApptModal(id) {
 }
 
 async function loadBarberSelectOptions(selectId) {
-  const barbers = await fetch(`${API}/api/barbers`).then(r => r.json());
+  const barbers = await authFetch(`${API}/api/barbers`).then(r => r.json());
   const sel = document.getElementById(selectId);
   if (!sel) return;
   const first = sel.options[0];
@@ -597,7 +990,7 @@ async function loadBarberSelectOptions(selectId) {
 }
 
 async function loadServiceSelectOptions(selectId) {
-  const services = await fetch(`${API}/api/services`).then(r => r.json());
+  const services = await authFetch(`${API}/api/services`).then(r => r.json());
   const sel = document.getElementById(selectId);
   if (!sel) return;
   const first = sel.options[0];
@@ -617,7 +1010,7 @@ async function updateApptSlots() {
 
   const sel = document.getElementById('apptTime');
   sel.innerHTML = '<option>Chargement...</option>';
-  const data = await fetch(`${API}/api/appointments/available-slots?date=${date}&barber_id=${barberId}&service_id=${serviceId}`).then(r => r.json());
+  const data = await authFetch(`${API}/api/appointments/available-slots?date=${date}&barber_id=${barberId}&service_id=${serviceId}`).then(r => r.json());
   sel.innerHTML = data.closed ? '<option>Fermé ce jour</option>' : data.slots.map(s => `<option value="${s}">${s}</option>`).join('') || '<option>Aucun créneau</option>';
 }
 
@@ -625,7 +1018,7 @@ async function openClientModal(id) {
   document.getElementById('editClientId').value = id || '';
   document.getElementById('clientModalTitle').textContent = id ? 'Modifier client' : 'Nouveau client';
   if (id) {
-    const c = allClients.find(x => x.id === id) || await fetch(`${API}/api/clients/${id}`).then(r => r.json());
+    const c = allClients.find(x => x.id === id) || await authFetch(`${API}/api/clients/${id}`).then(r => r.json());
     document.getElementById('editClientName').value = c.name;
     document.getElementById('editClientPhone').value = c.phone;
     document.getElementById('editClientEmail').value = c.email || '';
@@ -637,7 +1030,7 @@ async function openClientModal(id) {
 }
 
 async function openReminderModal() {
-  const clients = allClients.length ? allClients : await fetch(`${API}/api/clients`).then(r => r.json());
+  const clients = allClients.length ? allClients : await authFetch(`${API}/api/clients`).then(r => r.json());
   const sel = document.getElementById('reminderClientId');
   sel.innerHTML = clients.map(c => `<option value="${c.id}">${c.name} (${c.phone})</option>`).join('');
   const now = new Date(); now.setMinutes(Math.ceil(now.getMinutes()/15)*15);
@@ -649,7 +1042,7 @@ async function openBarberModal(id) {
   document.getElementById('editBarberId').value = id || '';
   document.getElementById('barberModalTitle').textContent = id ? 'Modifier barbier' : 'Nouveau barbier';
   if (id) {
-    const barbers = await fetch(`${API}/api/barbers`).then(r => r.json());
+    const barbers = await authFetch(`${API}/api/barbers`).then(r => r.json());
     const b = barbers.find(x => x.id === id);
     if (b) {
       document.getElementById('editBarberName').value = b.name;
@@ -664,16 +1057,23 @@ async function openBarberModal(id) {
 async function openServiceModal(id) {
   document.getElementById('editServiceId').value = id || '';
   document.getElementById('serviceModalTitle').textContent = id ? 'Modifier service' : 'Nouveau service';
-  if (id) {
-    const services = await fetch(`${API}/api/services`).then(r => r.json());
-    const s = services.find(x => x.id === id);
-    if (s) {
-      document.getElementById('editServiceName').value = s.name;
-      document.getElementById('editServiceDuration').value = s.duration;
-      document.getElementById('editServicePrice').value = s.price;
-      document.getElementById('editServiceDescription').value = s.description || '';
-    }
-  } else { document.getElementById('serviceForm').reset(); }
+  const icon = id
+    ? (await authFetch(`${API}/api/services`).then(r => r.json()).then(list => {
+        const s = list.find(x => x.id === id);
+        if (s) {
+          document.getElementById('editServiceName').value = s.name;
+          document.getElementById('editServiceDuration').value = s.duration;
+          document.getElementById('editServicePrice').value = s.price;
+          document.getElementById('editServiceDescription').value = s.description || '';
+          return s.icon || 'fas fa-cut';
+        }
+        return 'fas fa-cut';
+      }))
+    : (() => { document.getElementById('serviceForm').reset(); return 'fas fa-cut'; })();
+  document.getElementById('editServiceIcon').value = icon;
+  document.querySelectorAll('#iconPicker .icon-opt').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.icon === icon);
+  });
   openModal('serviceModal');
 }
 
@@ -706,7 +1106,7 @@ function setupModalForms() {
       time: document.getElementById('apptTime').value,
       notes: document.getElementById('apptNoteModal').value
     };
-    const res = await fetch(`${API}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const res = await authFetch(`${API}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json();
     if (res.ok) { showToast('Rendez-vous créé', 'success'); closeAllModals(); loadAppointments(); loadDashboard(); }
     else showToast(data.error || 'Erreur', 'error');
@@ -716,25 +1116,25 @@ function setupModalForms() {
     e.preventDefault();
     const id = document.getElementById('editClientId').value;
     const body = { name: document.getElementById('editClientName').value, phone: document.getElementById('editClientPhone').value, email: document.getElementById('editClientEmail').value, notes: document.getElementById('editClientNotes').value };
-    const url = id ? `${API}/api/clients/${id}` : `${API}/api/clients`;
+    const url = id ? `/api/clients/${id}` : '/api/clients';
     const method = id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const data = await res.json();
-    if (res.ok || res.status === 409) { showToast(id ? 'Client mis à jour' : 'Client ajouté', 'success'); closeAllModals(); loadClients(); }
-    else showToast(data.error || 'Erreur', 'error');
+    const res = await authFetch(url, { method, body: JSON.stringify(body) });
+    const data = await res?.json();
+    if (res?.ok || res?.status === 409) { showToast(id ? 'Client mis à jour' : 'Client ajouté', 'success'); closeAllModals(); loadClients(); }
+    else showToast(data?.error || 'Erreur', 'error');
   });
 
   document.getElementById('transactionForm').addEventListener('submit', async e => {
     e.preventDefault();
     const body = { type: document.getElementById('txType').value, category: document.getElementById('txCategory').value, description: document.getElementById('txDescription').value, amount: parseFloat(document.getElementById('txAmount').value), date: document.getElementById('txDate').value };
-    await fetch(`${API}/api/accounting/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(`${API}/api/accounting/transactions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     showToast('Transaction ajoutée', 'success'); closeAllModals(); loadAccounting();
   });
 
   document.getElementById('reminderForm').addEventListener('submit', async e => {
     e.preventDefault();
     const body = { client_id: document.getElementById('reminderClientId').value, message: document.getElementById('reminderMessage').value, channel: document.getElementById('reminderChannel').value, scheduled_at: document.getElementById('reminderScheduled').value.replace('T', ' ') };
-    await fetch(`${API}/api/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(`${API}/api/reminders`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     showToast('Relance planifiée', 'success'); closeAllModals(); loadReminders();
   });
 
@@ -742,21 +1142,90 @@ function setupModalForms() {
     e.preventDefault();
     const id = document.getElementById('editBarberId').value;
     const body = { name: document.getElementById('editBarberName').value, email: document.getElementById('editBarberEmail').value, phone: document.getElementById('editBarberPhone').value, color: document.getElementById('editBarberColor').value };
-    const url = id ? `${API}/api/barbers/${id}` : `${API}/api/barbers`;
+    const url = id ? `/api/barbers/${id}` : '/api/barbers';
     const method = id ? 'PUT' : 'POST';
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    await authFetch(url, { method, body: JSON.stringify(body) });
     showToast(id ? 'Barbier mis à jour' : 'Barbier ajouté', 'success'); closeAllModals(); loadSettings();
+  });
+
+  document.getElementById('productForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('editProductId').value;
+    const photoInput = document.getElementById('productPhotoInput');
+
+    if (id) {
+      // Update text fields
+      await authFetch(`${API}/api/admin/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: document.getElementById('editProductName').value,
+          brand: document.getElementById('editProductBrand').value,
+          type: document.getElementById('editProductType').value,
+          price: parseFloat(document.getElementById('editProductPrice').value),
+          description: document.getElementById('editProductDescription').value
+        })
+      });
+      // Replace photo if a new file was chosen
+      if (photoInput.files[0]) {
+        const pf = new FormData();
+        pf.append('photo', photoInput.files[0]);
+        await authFetch(`${API}/api/admin/products/${id}/photo`, { method: 'PATCH', body: pf });
+      }
+    } else {
+      const formData = new FormData();
+      if (photoInput.files[0]) formData.append('photo', photoInput.files[0]);
+      formData.append('name', document.getElementById('editProductName').value);
+      formData.append('brand', document.getElementById('editProductBrand').value);
+      formData.append('type', document.getElementById('editProductType').value);
+      formData.append('price', document.getElementById('editProductPrice').value);
+      formData.append('description', document.getElementById('editProductDescription').value);
+      const res = await authFetch(`${API}/api/admin/products`, { method: 'POST', body: formData });
+      if (!res?.ok) {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || 'Erreur lors de l\'ajout', 'error');
+        return;
+      }
+    }
+    showToast(id ? 'Produit mis à jour' : 'Produit ajouté', 'success');
+    closeAllModals();
+    loadProductsPage();
   });
 
   document.getElementById('serviceForm').addEventListener('submit', async e => {
     e.preventDefault();
     const id = document.getElementById('editServiceId').value;
-    const body = { name: document.getElementById('editServiceName').value, duration: parseInt(document.getElementById('editServiceDuration').value), price: parseFloat(document.getElementById('editServicePrice').value), description: document.getElementById('editServiceDescription').value };
-    const url = id ? `${API}/api/services/${id}` : `${API}/api/services`;
+    const body = {
+      name: document.getElementById('editServiceName').value,
+      duration: parseInt(document.getElementById('editServiceDuration').value),
+      price: parseFloat(document.getElementById('editServicePrice').value),
+      description: document.getElementById('editServiceDescription').value,
+      icon: document.getElementById('editServiceIcon').value || 'fas fa-cut'
+    };
+    const url = id ? `/api/services/${id}` : '/api/services';
     const method = id ? 'PUT' : 'POST';
-    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    showToast(id ? 'Service mis à jour' : 'Service ajouté', 'success'); closeAllModals(); loadSettings();
+    await authFetch(url, { method, body: JSON.stringify(body) });
+    showToast(id ? 'Service mis à jour' : 'Service ajouté', 'success');
+    closeAllModals();
+    loadServicesPage();
+    if (document.getElementById('page-settings')?.classList.contains('active') ||
+        !document.getElementById('page-settings')?.classList.contains('hidden')) loadSettings();
   });
+
+  document.getElementById('iconPicker')?.addEventListener('click', e => {
+    const btn = e.target.closest('.icon-opt');
+    if (!btn) return;
+    document.querySelectorAll('#iconPicker .icon-opt').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    document.getElementById('editServiceIcon').value = btn.dataset.icon;
+  });
+
+  const teamFormEl = document.getElementById('teamForm');
+  if (teamFormEl) {
+    teamFormEl.addEventListener('submit', async e => {
+      e.preventDefault();
+      await saveTeamMember();
+    });
+  }
 }
 
 // ---- TOAST ----
@@ -780,6 +1249,303 @@ function statusBadge(status) {
 }
 
 async function logout() {
-  await fetch('/logout', { method: 'POST' });
+  const refresh = localStorage.getItem('refreshToken');
+  await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: refresh }) });
+  localStorage.clear();
   window.location.href = '/login';
+}
+
+// ---- HERO IMAGE (legacy settings page) ----
+async function uploadHeroImage(input) {
+  if (!input.files[0]) return;
+  const progress = document.getElementById('uploadProgress');
+  if (progress) progress.style.display = 'flex';
+  const formData = new FormData();
+  formData.append('image', input.files[0]);
+  try {
+    const res = await authFetch(`/api/admin/customization/hero-photo`, { method: 'POST', body: formData });
+    const data = await res.json();
+    if (res.ok) { showToast('Image mise à jour avec succès', 'success'); loadSettings(); }
+    else showToast(data.error || 'Erreur téléversement', 'error');
+  } catch (e) { showToast('Erreur de connexion', 'error'); }
+  finally { if (progress) progress.style.display = 'none'; input.value = ''; }
+}
+
+async function removeHeroImage() {
+  if (!confirm('Supprimer l\'image et revenir au fond par défaut ?')) return;
+  const res = await authFetch(`/api/admin/customization/hero-photo`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Image supprimée — fond par défaut restauré', 'success'); loadSettings(); }
+}
+
+async function saveHeroTexts() {
+  const body = {
+    hero_tag: document.getElementById('settingHeroTag')?.value || '',
+    hero_title: document.getElementById('settingHeroTitle')?.value || '',
+    hero_subtitle: document.getElementById('settingHeroSubtitle')?.value || ''
+  };
+  const res = await authFetch(`/api/admin/customization`, { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Textes mis à jour', 'success');
+}
+
+// ---- CUSTOMIZATION ----
+async function loadCustomization() {
+  const res = await authFetch('/api/admin/customization');
+  if (!res?.ok) return;
+  const c = await res.json();
+
+  const urlEl = document.getElementById('bookingUrlText');
+  if (urlEl) { urlEl.textContent = c.public_url; urlEl.href = c.public_url; }
+  window._tenantBookingUrl = c.public_url;
+
+  const colorInput = document.getElementById('customColor');
+  const colorPreview = document.getElementById('colorPreview');
+  if (colorInput) { colorInput.value = c.primary_color || '#e2b04a'; }
+  if (colorPreview) colorPreview.style.background = c.primary_color || '#e2b04a';
+
+  const fields = {
+    customHeroTag: c.hero_tag, customHeroTitle: c.hero_title, customHeroSubtitle: c.hero_subtitle,
+    customSalonName: c.name, customSalonPhone: c.phone, customSalonAddress: c.address, customSalonEmail: c.email,
+    customInstagram: c.instagram_url, customFacebook: c.facebook_url, customTiktok: c.tiktok_url,
+    customAboutText: c.about_text, customProductsText: c.products_text
+  };
+  Object.entries(fields).forEach(([id, val]) => { const el = document.getElementById(id); if (el) el.value = val || ''; });
+
+  renderImageZone('logoPreviewWrap', c.logo_url, 'logo');
+  renderImageZone('bannerPreviewWrap', c.banner_url, 'banner');
+  renderImageZone('heroPhotoPreviewWrap', c.hero_photo_url, 'hero-photo');
+}
+
+function renderImageZone(wrapperId, url, type) {
+  const wrap = document.getElementById(wrapperId);
+  if (!wrap) return;
+  const inputIdMap = { logo: 'logoInput', banner: 'bannerInput', 'hero-photo': 'heroPhotoInput' };
+  const inputId = inputIdMap[type] || `${type}Input`;
+  if (url) {
+    wrap.innerHTML = `<img src="${url}" class="custom-image-preview" alt=""><button class="btn btn-sm btn-danger" style="margin:0.5rem" onclick="deleteCustomImage('${type}')"><i class="fas fa-trash"></i> Supprimer</button>`;
+  } else {
+    wrap.innerHTML = `<div class="custom-image-placeholder" onclick="document.getElementById('${inputId}').click()"><i class="fas fa-image"></i><span>Cliquer pour uploader</span></div>`;
+  }
+}
+
+async function uploadCustomImage(type, input) {
+  if (!input?.files[0]) return;
+  const formData = new FormData();
+  formData.append('image', input.files[0]);
+  const res = await authFetch(`/api/admin/customization/${type}`, { method: 'POST', body: formData });
+  if (res?.ok) { showToast('Image mise à jour', 'success'); loadCustomization(); }
+  else showToast('Erreur upload', 'error');
+  input.value = '';
+}
+
+async function deleteCustomImage(type) {
+  if (!confirm('Supprimer cette image ?')) return;
+  const res = await authFetch(`/api/admin/customization/${type}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Image supprimée', 'success'); loadCustomization(); }
+}
+
+async function saveCustomizationTexts() {
+  const body = {
+    hero_tag: document.getElementById('customHeroTag')?.value,
+    hero_title: document.getElementById('customHeroTitle')?.value,
+    hero_subtitle: document.getElementById('customHeroSubtitle')?.value
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Textes sauvegardés', 'success');
+}
+
+async function saveCustomizationInfo() {
+  const body = {
+    name: document.getElementById('customSalonName')?.value,
+    phone: document.getElementById('customSalonPhone')?.value,
+    address: document.getElementById('customSalonAddress')?.value,
+    email: document.getElementById('customSalonEmail')?.value
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Informations sauvegardées', 'success');
+}
+
+async function saveCustomizationSocials() {
+  const body = {
+    instagram_url: document.getElementById('customInstagram')?.value || '',
+    facebook_url: document.getElementById('customFacebook')?.value || '',
+    tiktok_url: document.getElementById('customTiktok')?.value || ''
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Réseaux sociaux sauvegardés', 'success');
+}
+
+async function saveCustomizationContent() {
+  const body = {
+    about_text: document.getElementById('customAboutText')?.value || '',
+    products_text: document.getElementById('customProductsText')?.value || ''
+  };
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify(body) });
+  if (res?.ok) showToast('Contenu sauvegardé', 'success');
+}
+
+async function saveCustomizationColor() {
+  const color = document.getElementById('customColor')?.value;
+  const res = await authFetch('/api/admin/customization', { method: 'PUT', body: JSON.stringify({ primary_color: color }) });
+  if (res?.ok) showToast('Couleur appliquée', 'success');
+}
+
+// ---- GALLERY ----
+async function loadGallery() {
+  const res = await authFetch('/api/admin/gallery');
+  if (!res?.ok) return;
+  const photos = await res.json();
+  const grid = document.getElementById('galleryGrid');
+  if (!grid) return;
+  if (!photos.length) {
+    grid.innerHTML = '<div class="empty-state"><i class="fas fa-images"></i><p>Aucune photo pour l\'instant</p></div>';
+    return;
+  }
+  grid.innerHTML = photos.map(p => `
+    <div class="gallery-admin-item" id="gallery-item-${p.id}">
+      <div class="gallery-admin-img-wrap">
+        <img src="${p.url}" alt="${p.caption || ''}">
+        <button class="gallery-admin-delete" onclick="deleteGalleryPhoto(${p.id})" title="Supprimer"><i class="fas fa-trash"></i></button>
+      </div>
+      <input type="text" class="form-input gallery-caption-input" value="${p.caption || ''}" placeholder="Légende (optionnel)"
+        onblur="saveGalleryCaption(${p.id}, this.value)" style="margin-top:0.5rem;font-size:0.8rem;padding:6px 8px">
+    </div>
+  `).join('');
+}
+
+async function uploadGalleryPhotos(input) {
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let uploaded = 0;
+  for (const file of files) {
+    const formData = new FormData();
+    formData.append('image', file);
+    try {
+      const res = await authFetch('/api/admin/gallery', { method: 'POST', body: formData });
+      if (res?.ok) {
+        uploaded++;
+      } else {
+        let errMsg = file.name;
+        try { const d = await res.json(); errMsg = d.error || errMsg; } catch(_) {}
+        showToast('Erreur: ' + errMsg, 'error');
+      }
+    } catch(e) {
+      showToast('Erreur réseau: ' + file.name, 'error');
+    }
+  }
+  if (uploaded) showToast(`${uploaded} photo(s) ajoutée(s)`, 'success');
+  input.value = '';
+  loadGallery();
+}
+
+async function deleteGalleryPhoto(id) {
+  if (!confirm('Supprimer cette photo ?')) return;
+  const res = await authFetch(`/api/admin/gallery/${id}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Photo supprimée', 'success'); loadGallery(); }
+}
+
+async function saveGalleryCaption(id, caption) {
+  await authFetch(`/api/admin/gallery/${id}`, { method: 'PATCH', body: JSON.stringify({ caption }) });
+}
+
+function copyBookingUrl() {
+  const url = window._tenantBookingUrl || document.getElementById('bookingUrlText')?.textContent;
+  if (url) navigator.clipboard.writeText(url).then(() => showToast('URL copiée !', 'success'));
+}
+
+function openTeamModal() {
+  document.getElementById('teamForm')?.reset();
+  openModal('teamModal');
+}
+
+// ---- TEAM ----
+async function loadTeam() {
+  const res = await authFetch('/api/admin/team');
+  if (!res?.ok) return;
+  const members = await res.json();
+  const tbody = document.getElementById('teamBody');
+  if (!tbody) return;
+  tbody.innerHTML = members.map(m => `
+    <tr>
+      <td>${m.name}</td>
+      <td>${m.email}</td>
+      <td><span class="role-badge role-${m.role}">${m.role}</span></td>
+      <td>${m.active ? '<span class="status-badge status-confirmed">Actif</span>' : '<span class="status-badge status-cancelled">Inactif</span>'}</td>
+      <td class="actions-cell">
+        ${m.role !== 'owner' ? `<button class="btn btn-sm btn-danger" onclick="removeTeamMember(${m.id})"><i class="fas fa-user-times"></i></button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+async function saveTeamMember() {
+  const body = {
+    name: document.getElementById('teamMemberName')?.value,
+    email: document.getElementById('teamMemberEmail')?.value,
+    password: document.getElementById('teamMemberPassword')?.value,
+    role: document.getElementById('teamMemberRole')?.value || 'admin'
+  };
+  const res = await authFetch('/api/admin/team', { method: 'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  if (res.ok) { showToast('Membre ajouté', 'success'); closeAllModals(); loadTeam(); }
+  else showToast(data.error || 'Erreur', 'error');
+}
+
+async function removeTeamMember(id) {
+  if (!confirm('Désactiver ce membre ?')) return;
+  const res = await authFetch(`/api/admin/team/${id}`, { method: 'DELETE' });
+  if (res?.ok) { showToast('Membre désactivé', 'success'); loadTeam(); }
+}
+
+// ---- BILLING ----
+async function loadBilling() {
+  const res = await authFetch('/api/admin/billing');
+  if (!res?.ok) return;
+  const b = await res.json();
+  const el = document.getElementById('billingContent');
+  if (!el) return;
+  const daysInfo = b.plan_status === 'trialing'
+    ? `<span style="color:var(--blue)"><i class="fas fa-clock"></i> ${b.days_left_trial} jours d'essai restants</span>`
+    : b.current_period_end ? `<span>Renouvellement le ${b.current_period_end}</span>` : '';
+  el.innerHTML = `
+    <div class="billing-plan-card">
+      <div class="billing-current">
+        <span class="billing-plan-name">${(b.plan||'').toUpperCase()}</span>
+        <span class="plan-badge ${b.plan_status}">${b.plan_status}</span>
+        ${daysInfo}
+      </div>
+      <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="openStripePortal()"><i class="fas fa-external-link-alt"></i> Gérer l'abonnement</button>
+        <a href="/pricing" target="_blank" class="btn btn-outline"><i class="fas fa-arrow-up"></i> Changer de plan</a>
+      </div>
+    </div>`;
+}
+
+async function openStripePortal() {
+  const res = await authFetch('/api/admin/billing/portal', { method: 'POST', body: JSON.stringify({}) });
+  if (res?.ok) { const { url } = await res.json(); if (url) window.location.href = url; }
+  else showToast('Portail Stripe non configuré', 'warning');
+}
+
+async function subscribeToPlan(plan) {
+  if (!confirm(`Passer au plan ${plan} ?`)) return;
+  const res = await authFetch('/api/admin/billing/checkout', { method: 'POST', body: JSON.stringify({ plan }) });
+  if (res?.ok) { const { url } = await res.json(); if (url) window.location.href = url; }
+  else showToast('Erreur lors du checkout', 'error');
+}
+
+function showTrialBanner(daysLeft) {
+  if (document.getElementById('trialBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'trialBanner';
+  banner.className = 'banner-trial';
+  banner.innerHTML = `<i class="fas fa-clock"></i> Votre essai gratuit se termine dans <strong>${daysLeft} jour${daysLeft > 1 ? 's' : ''}</strong>. <a href="/pricing" style="color:inherit;font-weight:600;text-decoration:underline">Choisir un plan</a>`;
+  document.getElementById('adminMain')?.prepend(banner);
+}
+
+function showPaymentFailedBanner() {
+  if (document.getElementById('paymentBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'paymentBanner';
+  banner.className = 'banner-warning';
+  banner.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Paiement échoué — veuillez mettre à jour votre moyen de paiement. <button class="btn btn-sm btn-danger" onclick="openStripePortal()" style="margin-left:0.5rem">Mettre à jour</button>`;
+  document.getElementById('adminMain')?.prepend(banner);
 }

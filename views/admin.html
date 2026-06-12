@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créno – Tableau de bord</title>
+  <!-- Garde d'auth instantanée : redirige avant tout rendu si pas de token -->
+  <script>if(!localStorage.getItem('accessToken')){window.location.replace('/login')}</script>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body class="admin-body">
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">
+      <img id="sidebarLogoImg" src="" alt="" style="display:none;height:32px;width:32px;border-radius:6px;object-fit:cover">
+      <i class="fas fa-cut" id="sidebarIconEl"></i>
+      <span id="sidebarSalonName">Mon Salon</span>
+    </div>
+    <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item active" data-page="dashboard">
+      <i class="fas fa-chart-pie"></i><span>Tableau de bord</span>
+    </a>
+    <a href="#" class="nav-item" data-page="calendar">
+      <i class="fas fa-calendar-alt"></i><span>Agenda</span>
+      <span class="badge" id="pendingBadge">0</span>
+    </a>
+    <a href="#" class="nav-item" data-page="appointments">
+      <i class="fas fa-list-check"></i><span>Rendez-vous</span>
+    </a>
+    <a href="#" class="nav-item" data-page="clients">
+      <i class="fas fa-users"></i><span>Clients</span>
+    </a>
+    <a href="#" class="nav-item" data-page="reminders">
+      <i class="fas fa-bell"></i><span>Relances</span>
+    </a>
+    <a href="#" class="nav-item" data-page="accounting">
+      <i class="fas fa-dollar-sign"></i><span>Comptabilité</span>
+    </a>
+    <a href="#" class="nav-item" data-page="reports">
+      <i class="fas fa-file-chart-column"></i><span>Rapports</span>
+    </a>
+    <a href="#" class="nav-item" data-page="products">
+      <i class="fas fa-box-open"></i><span>Produits</span>
+    </a>
+    <a href="#" class="nav-item" data-page="services">
+      <i class="fas fa-scissors"></i><span>Services</span>
+    </a>
+    <a href="#" class="nav-item" data-page="settings">
+      <i class="fas fa-cog"></i><span>Paramètres</span>
+    </a>
+    <a href="#" class="nav-item" data-page="gallery">
+      <i class="fas fa-images"></i><span>Galerie</span>
+    </a>
+    <a href="#" class="nav-item" data-page="customization">
+      <i class="fas fa-paint-brush"></i><span>Personnalisation</span>
+    </a>
+    <a href="#" class="nav-item" data-page="team" data-owner-only>
+      <i class="fas fa-user-shield"></i><span>Équipe</span>
+    </a>
+    <a href="#" class="nav-item" data-page="billing" data-owner-only>
+      <i class="fas fa-credit-card"></i><span>Abonnement</span>
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="/" class="nav-item"><i class="fas fa-arrow-left"></i><span>Site client</span></a>
+    <a href="#" class="nav-item" onclick="logout()" style="color:#ef4444"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="admin-main" id="adminMain">
+
+  <!-- Top bar -->
+  <header class="admin-topbar">
+    <button class="menu-toggle" id="menuToggle"><i class="fas fa-bars"></i></button>
+    <h1 class="page-title" id="pageTitle">Tableau de bord</h1>
+    <div class="topbar-right">
+      <span class="date-display" id="dateDisplay"></span>
+      <span class="plan-badge" id="planBadge" style="display:none"></span>
+      <div class="avatar" id="userAvatar">G</div>
+    </div>
+  </header>
+
+  <!-- Banners -->
+  <div id="trialBanner" style="display:none"></div>
+
+  <!-- Page content -->
+  <main class="admin-content" id="adminContent">
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page-section">
+
+      <!-- Lien de réservation -->
+      <div class="booking-url-card" id="dashboardBookingUrl" style="margin-bottom:1.25rem;display:none">
+        <i class="fas fa-link" style="color:var(--blue);flex-shrink:0"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:2px">Votre lien de réservation public</div>
+          <a id="dashboardBookingLink" href="#" target="_blank" class="booking-url-text" style="font-size:0.875rem"></a>
+        </div>
+        <button onclick="copyBookingUrl()" class="btn btn-sm btn-outline"><i class="fas fa-copy"></i> Copier</button>
+        <a id="dashboardBookingOpen" href="#" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-external-link-alt"></i> Voir</a>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card kpi-blue">
+          <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">RDV aujourd'hui</span>
+            <strong class="kpi-value" id="kpiToday">–</strong>
+          </div>
+        </div>
+        <div class="kpi-card kpi-green">
+          <div class="kpi-icon"><i class="fas fa-dollar-sign"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">Revenus ce mois</span>
+            <strong class="kpi-value" id="kpiRevenue">–</strong>
+          </div>
+        </div>
+        <div class="kpi-card kpi-purple">
+          <div class="kpi-icon"><i class="fas fa-users"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">Total clients</span>
+            <strong class="kpi-value" id="kpiClients">–</strong>
+          </div>
+        </div>
+        <div class="kpi-card kpi-orange">
+          <div class="kpi-icon"><i class="fas fa-clock"></i></div>
+          <div class="kpi-data">
+            <span class="kpi-label">RDV en attente</span>
+            <strong class="kpi-value" id="kpiPending">–</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <div class="card">
+          <div class="card-header">
+            <h3>Revenus mensuels</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="revenueChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Services populaires</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="servicesChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>Performance des barbiers</h3>
+          </div>
+          <div id="barberStatsTable"></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <h3>RDV d'aujourd'hui</h3>
+            <button class="btn btn-sm btn-primary" onclick="showPage('calendar')">Voir l'agenda</button>
+          </div>
+          <div id="todayList" class="appointment-list-mini"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div id="page-calendar" class="page-section hidden">
+      <div class="page-actions">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-secondary" onclick="calendarPrevDay()" title="Jour précédent"><i class="fas fa-chevron-left"></i></button>
+          <button class="btn btn-secondary" onclick="calendarToday()" style="font-size:0.8rem;padding:6px 10px;">Aujourd'hui</button>
+          <button class="btn btn-secondary" onclick="calendarNextDay()" title="Jour suivant"><i class="fas fa-chevron-right"></i></button>
+          <span id="calendarDayLabel" style="font-weight:600;min-width:160px;text-align:center;"></span>
+        </div>
+        <input type="date" id="calendarDate" class="form-input">
+        <select id="calendarBarber" class="form-input">
+          <option value="">Tous les barbiers</option>
+        </select>
+        <button class="btn btn-primary" onclick="openApptModal()">
+          <i class="fas fa-plus"></i> Nouveau RDV
+        </button>
+      </div>
+      <div class="calendar-view" id="calendarView"></div>
+    </div>
+
+    <!-- APPOINTMENTS LIST -->
+    <div id="page-appointments" class="page-section hidden">
+      <div class="page-actions">
+        <input type="text" id="apptSearch" class="form-input" placeholder="Rechercher...">
+        <select id="apptStatusFilter" class="form-input">
+          <option value="">Tous les statuts</option>
+          <option value="pending">En attente</option>
+          <option value="confirmed">Confirmé</option>
+          <option value="completed">Terminé</option>
+          <option value="cancelled">Annulé</option>
+          <option value="no-show">No-show</option>
+        </select>
+        <input type="date" id="apptDateFilter" class="form-input">
+        <button class="btn btn-primary" onclick="openApptModal()">
+          <i class="fas fa-plus"></i> Nouveau RDV
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table" id="appointmentsTable">
+          <thead>
+            <tr>
+              <th>Date & Heure</th>
+              <th>Client</th>
+              <th>Barbier</th>
+              <th>Service</th>
+              <th>Prix</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CLIENTS -->
+    <div id="page-clients" class="page-section hidden">
+      <div class="page-actions">
+        <input type="text" id="clientSearch" class="form-input" placeholder="Rechercher un client...">
+        <button class="btn btn-primary" onclick="openClientModal()">
+          <i class="fas fa-user-plus"></i> Nouveau client
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Téléphone</th>
+              <th>Courriel</th>
+              <th>Points fidélité</th>
+              <th>Membre depuis</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clientsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REMINDERS -->
+    <div id="page-reminders" class="page-section hidden">
+      <div class="page-actions">
+        <select id="reminderFilter" class="form-input">
+          <option value="">Tous</option>
+          <option value="pending">En attente</option>
+          <option value="sent">Envoyés</option>
+        </select>
+        <button class="btn btn-primary" onclick="openReminderModal()">
+          <i class="fas fa-plus"></i> Nouvelle relance
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Téléphone</th>
+              <th>Message</th>
+              <th>Canal</th>
+              <th>Planifié</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="remindersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ACCOUNTING -->
+    <div id="page-accounting" class="page-section hidden">
+      <div class="page-actions">
+        <select id="accountingPeriod" class="form-input" onchange="loadAccounting()">
+          <option value="month">Ce mois</option>
+          <option value="week">Cette semaine</option>
+          <option value="today">Aujourd'hui</option>
+          <option value="year">Cette année</option>
+        </select>
+        <button class="btn btn-primary" onclick="openTransactionModal()">
+          <i class="fas fa-plus"></i> Ajouter transaction
+        </button>
+      </div>
+
+      <div class="accounting-summary" id="accountingSummary"></div>
+
+      <div class="dashboard-grid">
+        <div class="card card-full">
+          <div class="card-header">
+            <h3>Revenus vs Dépenses</h3>
+          </div>
+          <div class="chart-container">
+            <canvas id="accountingChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-container" style="margin-top:1rem">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Catégorie</th>
+              <th>Description</th>
+              <th>Montant</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="transactionsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS -->
+    <div id="page-reports" class="page-section hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-file-pdf"></i> Générer un rapport</h3>
+        </div>
+        <div class="report-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date de début</label>
+              <input type="date" id="reportStart" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Date de fin</label>
+              <input type="date" id="reportEnd" class="form-input">
+            </div>
+          </div>
+          <div class="report-types">
+            <label class="checkbox-card">
+              <input type="checkbox" value="appointments" checked> Rendez-vous
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" value="revenue" checked> Revenus
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" value="clients"> Clients
+            </label>
+            <label class="checkbox-card">
+              <input type="checkbox" value="expenses"> Dépenses
+            </label>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="generateReport()">
+            <i class="fas fa-download"></i> Générer le rapport PDF
+          </button>
+        </div>
+        <div id="reportPreview" style="margin-top:2rem"></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <!-- PRODUITS -->
+    <div id="page-products" class="page-section hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-box-open"></i> Catalogue produits</h3>
+          <button class="btn btn-sm btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> Nouveau produit</button>
+        </div>
+        <div id="productsAdminGrid" class="products-admin-grid"></div>
+      </div>
+    </div>
+
+    <!-- SERVICES -->
+    <div id="page-services" class="page-section hidden">
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-scissors"></i> Mes services</h3>
+          <button class="btn btn-sm btn-primary" onclick="openServiceModal()"><i class="fas fa-plus"></i> Nouveau service</button>
+        </div>
+        <div id="servicesPageList" style="padding:0.5rem 0"></div>
+      </div>
+    </div>
+
+    <div id="page-settings" class="page-section hidden">
+
+      <!-- Image hero -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-image"></i> Image d'en-tête du site</h3>
+        </div>
+        <div class="hero-upload-zone" id="heroUploadZone">
+          <div class="hero-preview-wrap">
+            <div class="hero-preview" id="heroPreview">
+              <div class="hero-preview-placeholder" id="heroPlaceholder">
+                <i class="fas fa-image"></i>
+                <p>Aucune image — fond dégradé par défaut</p>
+              </div>
+              <img id="heroPreviewImg" src="" alt="Aperçu" style="display:none">
+              <div class="hero-preview-overlay" id="heroPreviewOverlay" style="display:none">
+                <button class="btn btn-danger btn-sm" onclick="removeHeroImage()">
+                  <i class="fas fa-trash"></i> Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="hero-upload-controls">
+            <p class="upload-hint">Choisissez une photo de fond pour la section d'accueil du site client.<br>
+               Formats acceptés : JPG, PNG, WebP — Maximum 5 Mo.</p>
+            <label class="btn btn-primary upload-label" for="heroImageInput">
+              <i class="fas fa-upload"></i> Choisir une image
+            </label>
+            <input type="file" id="heroImageInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadHeroImage(this)">
+            <div id="uploadProgress" style="display:none" class="upload-progress">
+              <div class="spinner" style="width:18px;height:18px;border-width:2px"></div>
+              <span>Téléversement en cours...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Textes de la section hero -->
+        <div class="hero-texts-form">
+          <div class="card-header" style="border-top:1px solid var(--border)">
+            <h3><i class="fas fa-pen"></i> Textes de la section d'accueil</h3>
+            <button class="btn btn-sm btn-primary" onclick="saveHeroTexts()"><i class="fas fa-save"></i> Sauvegarder</button>
+          </div>
+          <div style="padding:1.25rem;display:grid;gap:1rem">
+            <div class="form-group" style="margin:0">
+              <label>Étiquette (ex: Salon de coiffure pour hommes)</label>
+              <input type="text" id="settingHeroTag" class="form-input" placeholder="Salon de coiffure pour hommes">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Titre principal</label>
+              <input type="text" id="settingHeroTitle" class="form-input" placeholder="L'art de la coupe parfaite">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Sous-titre</label>
+              <input type="text" id="settingHeroSubtitle" class="form-input" placeholder="Prenez rendez-vous en ligne, 24h/24">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Apparence de la bannière -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-sun"></i> Apparence de la bannière d'accueil</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveHeroOverlay()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1.5rem">
+
+          <!-- Mode bannière -->
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.6rem">Mode de la bannière</label>
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="heroMode" value="manual" id="heroModeManual" checked onchange="toggleHeroMode('manual')" style="margin-top:3px">
+                <span><strong>Image fixe</strong> <span style="color:var(--text-light);font-size:0.85rem">— utilise l'image d'en-tête définie dans "Image d'en-tête du site"</span></span>
+              </label>
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="heroMode" value="slideshow" id="heroModeSlideshow" onchange="toggleHeroMode('slideshow')" style="margin-top:3px">
+                <span><strong>Diaporama automatique</strong> <span style="color:var(--text-light);font-size:0.85rem">— rotation d'images toutes les 5 secondes</span></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Gestionnaire de diaporama -->
+          <div id="heroSlideshowSection" style="display:none;border:1px solid var(--accent,#e2b04a);border-radius:10px;padding:1rem;background:rgba(226,176,74,0.04)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+              <label style="font-weight:600;font-size:0.9rem;margin:0">
+                <i class="fas fa-images" style="margin-right:0.4rem;color:var(--accent)"></i>
+                Images du diaporama <span id="heroSlideCount" style="font-weight:400;color:var(--text-light);font-size:0.8rem"></span>
+              </label>
+              <label class="btn btn-sm btn-primary" for="heroSlideInput" style="cursor:pointer">
+                <i class="fas fa-plus"></i> Ajouter des images
+              </label>
+              <input type="file" id="heroSlideInput" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="uploadHeroSlides(this)">
+            </div>
+            <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:0.75rem">
+              Ajoutez plusieurs photos — elles défileront en fondu toutes les 5 secondes sur la page client.<br>
+              Formats : JPG, PNG, WebP — max 5 Mo par image. Cliquez <i class="fas fa-times"></i> pour supprimer.
+            </p>
+            <div id="heroSlidesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem">
+              <p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image — ajoutez au moins 2 photos pour activer le diaporama.</p>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.5rem">Couleur du fond</label>
+            <div style="display:flex;align-items:center;gap:0.75rem">
+              <input type="color" id="heroBgColorPicker" value="#1a1a2e"
+                style="width:48px;height:38px;border:none;border-radius:6px;cursor:pointer;padding:2px;background:none"
+                oninput="document.getElementById('heroBgColorLabel').textContent=this.value">
+              <code id="heroBgColorLabel" style="font-size:0.85rem;color:var(--text-light)">#1a1a2e</code>
+              <span style="font-size:0.8rem;color:var(--text-light)">— couleur de fond quand il n'y a pas d'image</span>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.25rem">
+              Opacité du voile sombre — <span id="overlayOpacityLabel">70%</span>
+            </label>
+            <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:0.6rem">
+              0% = voile transparent (image très visible) &nbsp;·&nbsp; 90% = très sombre
+            </p>
+            <input type="range" id="overlayOpacitySlider" min="0" max="90" step="5" value="70"
+              style="width:100%;max-width:420px;accent-color:var(--accent)"
+              oninput="document.getElementById('overlayOpacityLabel').textContent=this.value+'%'">
+            <div style="display:flex;justify-content:space-between;max-width:420px;font-size:0.72rem;color:var(--text-light);margin-top:0.2rem">
+              <span>Clair (0%)</span><span>Sombre (90%)</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Paramètres des rendez-vous -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-calendar-check"></i> Paramètres des rendez-vous</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveBookingSettings()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1.75rem">
+
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.75rem">Mode de confirmation</label>
+            <div style="display:flex;flex-direction:column;gap:0.6rem">
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="confirmationMode" value="automatic" id="confModeAuto" style="margin-top:3px">
+                <span><strong>Automatique</strong> <span style="color:var(--text-light);font-size:0.85rem">— chaque réservation est confirmée instantanément (défaut)</span></span>
+              </label>
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="confirmationMode" value="manual" id="confModeManual" style="margin-top:3px">
+                <span><strong>Manuel</strong> <span style="color:var(--text-light);font-size:0.85rem">— vous confirmez chaque RDV manuellement depuis l'agenda</span></span>
+              </label>
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="confirmationMode" value="hybrid" id="confModeHybrid" style="margin-top:3px">
+                <span><strong>Hybride</strong> <span style="color:var(--text-light);font-size:0.85rem">— automatique si réservé &gt;24h à l'avance, sinon en attente</span></span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.5rem">Rappels automatiques avant le rendez-vous</label>
+            <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:0.75rem">Cochez un ou plusieurs intervalles — un SMS/email sera envoyé à chaque délai sélectionné.</p>
+            <div style="display:flex;flex-direction:column;gap:0.5rem">
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="72"> 72 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="48"> 48 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="36"> 36 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="24"> 24 heures avant
+              </label>
+              <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer">
+                <input type="checkbox" name="reminderDelay" value="3"> 3 heures avant
+              </label>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Barbiers & Services -->
+      <div class="settings-grid">
+        <div class="card">
+          <div class="card-header"><h3>Barbiers</h3>
+            <button class="btn btn-sm btn-primary" onclick="openBarberModal()"><i class="fas fa-plus"></i> Ajouter</button>
+          </div>
+          <div id="barbersList"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Services</h3>
+            <button class="btn btn-sm btn-primary" onclick="openServiceModal()"><i class="fas fa-plus"></i> Ajouter</button>
+          </div>
+          <div id="servicesList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMIZATION -->
+    <div id="page-customization" class="page-section hidden">
+
+      <!-- Images -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-images"></i> Apparence de votre salon</h3>
+        </div>
+        <div class="custom-images-grid">
+          <!-- Logo -->
+          <div class="custom-image-zone">
+            <div class="zone-label">Logo (carré)</div>
+            <div id="logoPreviewWrap">
+              <div class="custom-image-placeholder" onclick="document.getElementById('logoInput').click()">
+                <i class="fas fa-image"></i>
+                <span>Cliquer pour uploader</span>
+              </div>
+            </div>
+            <div class="custom-image-actions">
+              <label class="btn btn-sm btn-outline" for="logoInput" style="cursor:pointer;flex:1;text-align:center">
+                <i class="fas fa-upload"></i> Logo
+              </label>
+              <input type="file" id="logoInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadCustomImage('logo', this)">
+              <button class="btn btn-sm btn-danger" id="deleteLogoBtn" style="display:none" onclick="deleteCustomImage('logo')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Banner -->
+          <div class="custom-image-zone">
+            <div class="zone-label">Bannière (16:9)</div>
+            <div id="bannerPreviewWrap">
+              <div class="custom-image-placeholder" onclick="document.getElementById('bannerInput').click()">
+                <i class="fas fa-panorama"></i>
+                <span>Cliquer pour uploader</span>
+              </div>
+            </div>
+            <div class="custom-image-actions">
+              <label class="btn btn-sm btn-outline" for="bannerInput" style="cursor:pointer;flex:1;text-align:center">
+                <i class="fas fa-upload"></i> Bannière
+              </label>
+              <input type="file" id="bannerInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadCustomImage('banner', this)">
+              <button class="btn btn-sm btn-danger" id="deleteBannerBtn" style="display:none" onclick="deleteCustomImage('banner')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          <!-- Hero Photo -->
+          <div class="custom-image-zone">
+            <div class="zone-label">Photo hero (fond)</div>
+            <div id="heroPhotoPreviewWrap">
+              <div class="custom-image-placeholder" onclick="document.getElementById('heroPhotoInput').click()">
+                <i class="fas fa-mountain-sun"></i>
+                <span>Cliquer pour uploader</span>
+              </div>
+            </div>
+            <div class="custom-image-actions">
+              <label class="btn btn-sm btn-outline" for="heroPhotoInput" style="cursor:pointer;flex:1;text-align:center">
+                <i class="fas fa-upload"></i> Hero
+              </label>
+              <input type="file" id="heroPhotoInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadCustomImage('hero-photo', this)">
+              <button class="btn btn-sm btn-danger" id="deleteHeroPhotoBtn" style="display:none" onclick="deleteCustomImage('hero-photo')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Color picker -->
+        <div style="padding:1.25rem;border-top:1px solid var(--border)">
+          <div class="form-group" style="margin:0">
+            <label>Couleur principale</label>
+            <div class="color-picker-wrap">
+              <input type="color" id="customColor" value="#e2b04a" oninput="document.getElementById('colorPreview').style.background=this.value">
+              <div class="color-preview" id="colorPreview" style="background:#e2b04a"></div>
+              <span style="font-size:0.875rem;color:var(--text-light)">Couleur d'accent de votre page de réservation</span>
+              <button class="btn btn-sm btn-primary" onclick="saveCustomizationColor()">Appliquer</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Texts -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-pen"></i> Textes de la page de réservation</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveCustomizationTexts()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem">
+          <div class="form-group" style="margin:0">
+            <label>Étiquette (ex: Salon de coiffure pour hommes)</label>
+            <input type="text" id="customHeroTag" class="form-input" placeholder="Salon de coiffure pour hommes">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Titre principal</label>
+            <input type="text" id="customHeroTitle" class="form-input" placeholder="L'art de la coupe parfaite">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Sous-titre</label>
+            <input type="text" id="customHeroSubtitle" class="form-input" placeholder="Prenez rendez-vous en ligne, 24h/24">
+          </div>
+        </div>
+      </div>
+
+      <!-- Salon Info -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-store"></i> Informations du salon</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveCustomizationInfo()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem">
+          <div class="form-row">
+            <div class="form-group" style="margin:0">
+              <label>Nom du salon</label>
+              <input type="text" id="customSalonName" class="form-input">
+            </div>
+            <div class="form-group" style="margin:0">
+              <label>Téléphone</label>
+              <input type="tel" id="customSalonPhone" class="form-input">
+            </div>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Adresse</label>
+            <input type="text" id="customSalonAddress" class="form-input">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Email de contact</label>
+            <input type="email" id="customSalonEmail" class="form-input">
+          </div>
+        </div>
+      </div>
+
+      <!-- Réseaux sociaux -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-share-nodes"></i> Réseaux sociaux</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveCustomizationSocials()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem">
+          <div class="form-group" style="margin:0">
+            <label><i class="fab fa-instagram" style="color:#e1306c"></i> Instagram</label>
+            <input type="url" id="customInstagram" class="form-input" placeholder="https://instagram.com/votresalon">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label><i class="fab fa-facebook-f" style="color:#1877f2"></i> Facebook</label>
+            <input type="url" id="customFacebook" class="form-input" placeholder="https://facebook.com/votresalon">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label><i class="fab fa-tiktok"></i> TikTok</label>
+            <input type="url" id="customTiktok" class="form-input" placeholder="https://tiktok.com/@votresalon">
+          </div>
+        </div>
+      </div>
+
+      <!-- Contenu des sections -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-file-lines"></i> Contenu des sections</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveCustomizationContent()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1rem">
+          <div class="form-group" style="margin:0">
+            <label>Section "Marque" — texte de présentation du salon</label>
+            <textarea id="customAboutText" class="form-input" rows="4" placeholder="Parlez de votre salon, vos valeurs, votre histoire..."></textarea>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label>Section "Type de produits" — produits utilisés</label>
+            <textarea id="customProductsText" class="form-input" rows="4" placeholder="Ex: Cire Uppercut Deluxe, Pomade American Crew, Huile de barbe Baxter..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Booking URL -->
+      <div class="card">
+        <div class="card-header">
+          <h3><i class="fas fa-link"></i> Lien de réservation public</h3>
+        </div>
+        <div style="padding:1.25rem">
+          <div class="booking-url-card">
+            <a id="bookingUrlText" class="booking-url-text" href="#" target="_blank">#</a>
+            <button class="btn btn-sm btn-outline" onclick="copyBookingUrl()"><i class="fas fa-copy"></i> Copier</button>
+            <a id="bookingUrlBtn" href="#" target="_blank" class="btn btn-sm btn-primary" style="text-decoration:none">
+              <i class="fas fa-external-link-alt"></i> Voir
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GALLERY -->
+    <div id="page-gallery" class="page-section hidden">
+      <div class="page-actions">
+        <label class="btn btn-primary" for="galleryUploadInput" style="cursor:pointer">
+          <i class="fas fa-plus"></i> Ajouter des photos
+        </label>
+        <input type="file" id="galleryUploadInput" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="uploadGalleryPhotos(this)">
+      </div>
+      <div class="card" style="padding:1.25rem">
+        <p style="color:var(--text-light);font-size:0.875rem;margin-bottom:1.25rem">
+          <i class="fas fa-info-circle"></i> Les photos apparaissent sur votre page de réservation publique.
+        </p>
+        <div id="galleryGrid" class="gallery-admin-grid">
+          <div class="empty-state"><i class="fas fa-images"></i><p>Aucune photo pour l'instant</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEAM -->
+    <div id="page-team" class="page-section hidden">
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openTeamModal()">
+          <i class="fas fa-user-plus"></i> Ajouter un membre
+        </button>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Rôle</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="teamBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BILLING -->
+    <div id="page-billing" class="page-section hidden">
+      <div id="billingContent"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeAllModals()"></div>
+
+<!-- Appointment Modal -->
+<div class="modal" id="apptModal">
+  <div class="modal-header">
+    <h3 id="apptModalTitle">Nouveau rendez-vous</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="apptForm" class="modal-body">
+    <div class="form-group">
+      <label>Client (téléphone)</label>
+      <input type="tel" id="apptClientPhone" class="form-input" placeholder="514-555-0000" required>
+    </div>
+    <div class="form-group">
+      <label>Nom du client</label>
+      <input type="text" id="apptClientName" class="form-input" placeholder="Jean Dupont" required>
+    </div>
+    <div class="form-group">
+      <label>Service</label>
+      <select id="apptService" class="form-input" required onchange="updateApptSlots()">
+        <option value="">-- Choisir --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Barbier</label>
+      <select id="apptBarber" class="form-input" required onchange="updateApptSlots()">
+        <option value="">-- Choisir --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="apptDate" class="form-input" required onchange="updateApptSlots()">
+    </div>
+    <div class="form-group">
+      <label>Heure</label>
+      <select id="apptTime" class="form-input" required>
+        <option value="">-- Choisir date/service/barbier d'abord --</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="apptNoteModal" class="form-input" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Client Modal -->
+<div class="modal" id="clientModal">
+  <div class="modal-header">
+    <h3 id="clientModalTitle">Nouveau client</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="clientForm2" class="modal-body">
+    <input type="hidden" id="editClientId">
+    <div class="form-group">
+      <label>Nom *</label>
+      <input type="text" id="editClientName" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Téléphone *</label>
+      <input type="tel" id="editClientPhone" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Courriel</label>
+      <input type="email" id="editClientEmail" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="editClientNotes" class="form-input" rows="2"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Transaction Modal -->
+<div class="modal" id="transactionModal">
+  <div class="modal-header">
+    <h3>Ajouter une transaction</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="transactionForm" class="modal-body">
+    <div class="form-group">
+      <label>Type</label>
+      <select id="txType" class="form-input" required>
+        <option value="income">Revenu</option>
+        <option value="expense">Dépense</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Catégorie</label>
+      <select id="txCategory" class="form-input" required>
+        <option value="service">Service</option>
+        <option value="product">Produit</option>
+        <option value="rent">Loyer</option>
+        <option value="supplies">Fournitures</option>
+        <option value="salary">Salaire</option>
+        <option value="utilities">Services publics</option>
+        <option value="other">Autre</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" id="txDescription" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Montant ($)</label>
+      <input type="number" id="txAmount" class="form-input" step="0.01" min="0" required>
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="txDate" class="form-input" required>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Reminder Modal -->
+<div class="modal" id="reminderModal">
+  <div class="modal-header">
+    <h3>Nouvelle relance</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="reminderForm" class="modal-body">
+    <div class="form-group">
+      <label>Client</label>
+      <select id="reminderClientId" class="form-input" required></select>
+    </div>
+    <div class="form-group">
+      <label>Canal</label>
+      <select id="reminderChannel" class="form-input">
+        <option value="sms">SMS</option>
+        <option value="email">Courriel</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea id="reminderMessage" class="form-input" rows="3" required placeholder="Ex: Votre barbier préféré vous manque ! Prenez rendez-vous maintenant..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Date et heure d'envoi</label>
+      <input type="datetime-local" id="reminderScheduled" class="form-input" required>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Planifier</button>
+    </div>
+  </form>
+</div>
+
+<!-- Barber Modal -->
+<div class="modal" id="barberModal">
+  <div class="modal-header">
+    <h3 id="barberModalTitle">Nouveau barbier</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="barberForm" class="modal-body">
+    <input type="hidden" id="editBarberId">
+    <div class="form-group">
+      <label>Nom *</label>
+      <input type="text" id="editBarberName" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Courriel</label>
+      <input type="email" id="editBarberEmail" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Téléphone</label>
+      <input type="tel" id="editBarberPhone" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Couleur d'agenda</label>
+      <input type="color" id="editBarberColor" class="form-input" value="#3B82F6">
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Product Modal -->
+<div class="modal modal-lg" id="productModal">
+  <div class="modal-header">
+    <h3 id="productModalTitle">Nouveau produit</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="productForm" class="modal-body">
+    <input type="hidden" id="editProductId">
+    <div style="display:grid;grid-template-columns:160px 1fr;gap:1.5rem;align-items:start">
+      <!-- Photo zone -->
+      <div>
+        <label style="font-size:0.8rem;font-weight:500;color:var(--text-light);display:block;margin-bottom:0.4rem">Photo</label>
+        <div class="product-photo-zone" id="productPhotoZone" onclick="document.getElementById('productPhotoInput').click()">
+          <img id="productPhotoPreview" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:8px">
+          <div id="productPhotoPlaceholder"><i class="fas fa-camera" style="font-size:1.5rem;color:var(--text-light)"></i><br><small style="color:var(--text-light)">Cliquer</small></div>
+        </div>
+        <input type="file" id="productPhotoInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="previewProductPhoto(this)">
+      </div>
+      <!-- Fields -->
+      <div>
+        <div class="form-group">
+          <label>Nom du produit *</label>
+          <input type="text" id="editProductName" class="form-input" required placeholder="Ex: Pomade mate">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Marque</label>
+            <input type="text" id="editProductBrand" class="form-input" placeholder="Ex: American Crew">
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <input type="text" id="editProductType" class="form-input" placeholder="Ex: Cire, Shampoing…" list="productTypeList">
+            <datalist id="productTypeList"></datalist>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Prix ($)</label>
+          <input type="number" id="editProductPrice" class="form-input" step="0.01" min="0" value="0">
+        </div>
+        <div class="form-group">
+          <label>Description (optionnel)</label>
+          <textarea id="editProductDescription" class="form-input" rows="2" placeholder="Courte description du produit…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Service Modal -->
+<div class="modal" id="serviceModal">
+  <div class="modal-header">
+    <h3 id="serviceModalTitle">Nouveau service</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="serviceForm" class="modal-body">
+    <input type="hidden" id="editServiceId">
+    <input type="hidden" id="editServiceIcon" value="fas fa-cut">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Nom *</label>
+        <input type="text" id="editServiceName" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label>Prix ($) *</label>
+        <input type="number" id="editServicePrice" class="form-input" step="0.01" min="0" required>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Durée (minutes)</label>
+        <input type="number" id="editServiceDuration" class="form-input" value="30" min="15" step="15" required>
+      </div>
+      <div class="form-group">
+        <label>Icône</label>
+        <div class="icon-picker" id="iconPicker">
+          <button type="button" class="icon-opt selected" data-icon="fas fa-cut" title="Coupe"><i class="fas fa-cut"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-scissors" title="Ciseaux"><i class="fas fa-scissors"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-magic" title="Coiffage"><i class="fas fa-magic"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-user-tie" title="Rasage"><i class="fas fa-user-tie"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-spa" title="Soin"><i class="fas fa-spa"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-spray-can" title="Coloration"><i class="fas fa-spray-can"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-shower" title="Lavage"><i class="fas fa-shower"></i></button>
+          <button type="button" class="icon-opt" data-icon="fas fa-star" title="Premium"><i class="fas fa-star"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Description (optionnel)</label>
+      <textarea id="editServiceDescription" class="form-input" rows="2" placeholder="Courte description visible sur la page de réservation..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Enregistrer</button>
+    </div>
+  </form>
+</div>
+
+<!-- Team Member Modal -->
+<div class="modal" id="teamModal">
+  <div class="modal-header">
+    <h3>Ajouter un membre</h3>
+    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
+  </div>
+  <form id="teamForm" class="modal-body">
+    <div class="form-group">
+      <label>Nom *</label>
+      <input type="text" id="teamMemberName" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Email *</label>
+      <input type="email" id="teamMemberEmail" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Mot de passe temporaire *</label>
+      <input type="text" id="teamMemberPassword" class="form-input" required>
+    </div>
+    <div class="form-group">
+      <label>Rôle</label>
+      <select id="teamMemberRole" class="form-input">
+        <option value="barber">Barbier</option>
+        <option value="admin">Admin</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
+      <button type="submit" class="btn btn-primary">Ajouter</button>
+    </div>
+  </form>
+</div>
+
+<!-- Toast -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="/js/admin.js"></script>
+</body>
+</html>
