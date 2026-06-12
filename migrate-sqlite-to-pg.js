@@ -53,6 +53,7 @@ const TABLES = [
 function getColumns(db, table) {
   try {
     const info = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!info.length) return null; // table doesn't exist in SQLite
     return info.map(c => c.name);
   } catch (_) {
     return null;
