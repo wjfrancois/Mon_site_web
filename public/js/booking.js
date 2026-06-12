@@ -21,6 +21,14 @@ const state = {
 document.addEventListener('DOMContentLoaded', () => {
   loadTenantInfo();
   loadGallery();
+  // Bouton retour en haut
+  const btn = document.getElementById('backToTopBtn');
+  if (btn) {
+    window.addEventListener('scroll', () => {
+      const show = window.scrollY > 300;
+      btn.style.display = show ? 'flex' : 'none';
+    }, { passive: true });
+  }
   loadProducts();
   loadServices();
   loadBarbers();
