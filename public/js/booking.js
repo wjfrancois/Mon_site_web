@@ -26,67 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
   loadBarbers();
   initCalendar();
   initNavHighlight();
-  initDropdowns();
   document.getElementById('bookingForm').addEventListener('submit', submitBooking);
 });
 
-function initDropdowns() {
-  let closeTimer = null;
-
-  document.querySelectorAll('.bnav-dropdown').forEach(dd => {
-    const menu = dd.querySelector('.bnav-dropdown-menu');
-    if (!menu) return;
-
-    function openMenu() {
-      clearTimeout(closeTimer);
-      // Ferme les autres
-      document.querySelectorAll('.bnav-dropdown.open').forEach(other => {
-        if (other !== dd) { other.classList.remove('open'); other.querySelector('.bnav-dropdown-menu')?.classList.remove('open'); }
-      });
-      const rect = dd.getBoundingClientRect();
-      menu.style.left = Math.round(rect.left + rect.width / 2 - (menu.offsetWidth || 180) / 2) + 'px';
-      menu.style.top  = Math.round(rect.bottom) + 'px';
-      dd.classList.add('open');
-      menu.classList.add('open');
-      // Recalcule après affichage pour corriger la largeur réelle
-      requestAnimationFrame(() => {
-        menu.style.left = Math.round(rect.left + rect.width / 2 - menu.offsetWidth / 2) + 'px';
-      });
-    }
-
-    function scheduleClose() {
-      closeTimer = setTimeout(() => {
-        dd.classList.remove('open');
-        menu.classList.remove('open');
-      }, 120);
-    }
-
-    dd.addEventListener('mouseenter', openMenu);
-    dd.addEventListener('mouseleave', scheduleClose);
-    menu.addEventListener('mouseenter', () => clearTimeout(closeTimer));
-    menu.addEventListener('mouseleave', scheduleClose);
-  });
-
-  // Ferme tout si on clique ailleurs
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.bnav-dropdown')) {
-      document.querySelectorAll('.bnav-dropdown.open').forEach(dd => {
-        dd.classList.remove('open');
-        dd.querySelector('.bnav-dropdown-menu')?.classList.remove('open');
-      });
-    }
-  });
-}
-
 function initNavHighlight() {
   const links = document.querySelectorAll('.bnav-link[data-section]');
-  const sections = ['accueil','services','marque','produits','gallery-section','reservation'];
+  const sections = ['accueil', 'boutique', 'services', 'gallery-section', 'reservation'];
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
         const id = e.target.id;
         links.forEach(l => {
-          l.classList.toggle('active', l.dataset.section === id || (id === 'gallery-section' && l.dataset.section === 'galerie'));
+          l.classList.toggle('active', l.dataset.section === id);
         });
       }
     });
@@ -127,12 +78,12 @@ function openLightbox(url, caption) {
   document.body.appendChild(lb);
 }
 
-// ---- PRODUCTS ----
+// ---- BOUTIQUE ----
 let allProducts = [];
 let activeTypeFilter = 'Tous';
 
 function brandSlug(brand) {
-  return brand.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  return (brand || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
 async function loadProducts() {
@@ -143,52 +94,52 @@ async function loadProducts() {
     allProducts = products;
     if (!products.length) return;
 
-    const brands = [...new Set(products.map(p => p.brand || 'Autre'))].sort();
-    const types  = [...new Set(products.map(p => p.type).filter(Boolean))];
+    const section = document.getElementById('boutique');
+    if (!section) return;
 
-    // Peupler le dropdown Marque
-    const brandDd = document.getElementById('brandDropdown');
-    if (brandDd) {
-      brandDd.innerHTML = brands.map(b =>
-        `<a class="bnav-dropdown-item" href="#marque" onclick="scrollToBrand('${brandSlug(b)}')">${b}</a>`
+    const brands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
+    const types  = [...new Set(products.map(p => p.type).filter(Boolean))].sort();
+
+    // Filtres par type
+    const typeFiltersEl = document.getElementById('boutiqueTypeFilters');
+    if (typeFiltersEl && types.length) {
+      typeFiltersEl.innerHTML = ['Tous', ...types].map(t =>
+        `<button class="product-type-btn${t === activeTypeFilter ? ' active' : ''}" onclick="filterByType('${t.replace(/'/g, "\\'")}')"><i class="fas fa-tag" style="font-size:0.7rem;opacity:0.6;margin-right:0.3rem"></i>${t}</button>`
       ).join('');
     }
 
-    // Peupler le dropdown Type de produits
-    const typeDd = document.getElementById('typeDropdown');
-    if (typeDd) {
-      typeDd.innerHTML = [`<a class="bnav-dropdown-item" href="#produits" onclick="filterByType('Tous')">Tous</a>`,
-        ...types.map(t => `<a class="bnav-dropdown-item" href="#produits" onclick="filterByType('${t.replace(/'/g,"\\'")}')"> ${t}</a>`)
-      ].join('');
-    }
+    // Filtres par marque (ancres de défilement, visibles uniquement en vue "Tous")
+    renderBrandFilters(brands);
 
-    // Section MARQUE (groupé par marque)
-    const marqueSection = document.getElementById('marque');
-    const byBrandEl = document.getElementById('productsByBrand');
-    if (marqueSection && byBrandEl) {
-      renderProductsByBrand(products, byBrandEl);
-      marqueSection.style.display = 'block';
-    }
-
-    // Section PRODUITS (filtrable par type)
-    const produitsSection = document.getElementById('produits');
-    const filtersEl = document.getElementById('productTypeFilters');
-    const byTypeEl = document.getElementById('productsByType');
-    if (produitsSection && filtersEl && byTypeEl) {
-      filtersEl.innerHTML = ['Tous', ...types].map(t =>
-        `<button class="product-type-btn${t === activeTypeFilter ? ' active' : ''}" onclick="filterByType('${t.replace(/'/g,"\\'")}')"> ${t}</button>`
-      ).join('');
-      renderProductsByType(products, byTypeEl, activeTypeFilter);
-      produitsSection.style.display = 'block';
-    }
+    // Afficher les produits
+    renderBoutiqueProducts(products, activeTypeFilter);
+    section.style.display = 'block';
   } catch (e) {}
 }
 
-function scrollToBrand(slug) {
-  setTimeout(() => {
-    const el = document.getElementById('brand-' + slug);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 80);
+function renderBrandFilters(brands) {
+  const el = document.getElementById('boutiqueBrandFilters');
+  if (!el) return;
+  if (activeTypeFilter !== 'Tous' || brands.length <= 1) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = brands.map(b =>
+    `<button class="product-type-btn" style="background:var(--surface);border:1px solid var(--border)" onclick="scrollToBrand('${brandSlug(b)}')"><i class="fas fa-store" style="font-size:0.7rem;opacity:0.6;margin-right:0.3rem"></i>${b}</button>`
+  ).join('');
+}
+
+function renderBoutiqueProducts(products, typeFilter) {
+  const container = document.getElementById('boutiqueProducts');
+  if (!container) return;
+  if (typeFilter === 'Tous') {
+    renderProductsByBrand(products, container);
+  } else {
+    const filtered = products.filter(p => p.type === typeFilter);
+    if (!filtered.length) {
+      container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:2rem">Aucun produit dans cette catégorie.</p>';
+    } else {
+      container.innerHTML = `<div class="products-pub-grid">${filtered.map(p => productCardHtml(p)).join('')}</div>`;
+    }
+  }
 }
 
 function renderProductsByBrand(products, container) {
@@ -210,23 +161,20 @@ function renderProductsByBrand(products, container) {
 
 function filterByType(type) {
   activeTypeFilter = type;
-  document.querySelectorAll('.product-type-btn').forEach(b =>
+  document.querySelectorAll('#boutiqueTypeFilters .product-type-btn').forEach(b =>
     b.classList.toggle('active', b.textContent.trim() === type)
   );
-  const byTypeEl = document.getElementById('productsByType');
-  if (byTypeEl) renderProductsByType(allProducts, byTypeEl, type);
-  setTimeout(() => {
-    document.getElementById('produits')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 80);
+  const brands = [...new Set(allProducts.map(p => p.brand).filter(Boolean))].sort();
+  renderBrandFilters(brands);
+  renderBoutiqueProducts(allProducts, type);
 }
 
-function renderProductsByType(products, container, type) {
-  const filtered = type === 'Tous' ? products : products.filter(p => p.type === type);
-  if (!filtered.length) {
-    container.innerHTML = '<p style="color:var(--text-light);text-align:center;padding:2rem">Aucun produit dans cette catégorie.</p>';
-    return;
-  }
-  container.innerHTML = `<div class="products-pub-grid">${filtered.map(p => productCardHtml(p)).join('')}</div>`;
+function scrollToBrand(slug) {
+  filterByType('Tous');
+  setTimeout(() => {
+    const el = document.getElementById('brand-' + slug);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
 }
 
 function productCardHtml(p) {
@@ -238,11 +186,11 @@ function productCardHtml(p) {
           : `<div class="ppc-no-photo"><i class="fas fa-box-open"></i></div>`}
       </div>
       <div class="ppc-info">
-        <div class="ppc-brand">${p.brand || ''}</div>
+        ${p.brand ? `<div class="ppc-brand">${p.brand}</div>` : ''}
         <div class="ppc-name">${p.name}</div>
         ${p.type ? `<span class="ppc-type">${p.type}</span>` : ''}
         ${p.description ? `<div class="ppc-desc">${p.description}</div>` : ''}
-        <div class="ppc-price">${parseFloat(p.price).toFixed(2)} $</div>
+        <div class="ppc-price">${parseFloat(p.price || 0).toFixed(2)} $</div>
       </div>
     </div>
   `;
@@ -644,8 +592,19 @@ function showConfirmation(data) {
     `;
   }
 
-  const msgEl = document.getElementById('confirmationMsg');
-  if (msgEl && data.message) msgEl.textContent = data.message;
+  const titleEl = document.getElementById('successTitle');
+  const iconEl  = document.getElementById('successIcon');
+  const msgEl   = document.getElementById('confirmationMsg');
+
+  if (data.status === 'pending') {
+    if (titleEl) titleEl.textContent = 'Demande envoyée !';
+    if (iconEl)  iconEl.innerHTML = '<i class="fas fa-hourglass-half"></i>';
+    if (msgEl)   msgEl.textContent = 'Votre demande a bien été reçue. Vous serez contacté pour confirmation.';
+  } else {
+    if (titleEl) titleEl.textContent = 'Rendez-vous confirmé !';
+    if (iconEl)  iconEl.innerHTML = '<i class="fas fa-check"></i>';
+    if (msgEl && data.message) msgEl.textContent = data.message;
+  }
 
   section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

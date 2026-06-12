@@ -19,7 +19,8 @@ router.get('/:slug/info', async (req, res) => {
     primary_color: t.primary_color || '#e2b04a',
     hero_title: t.hero_title, hero_subtitle: t.hero_subtitle, hero_tag: t.hero_tag,
     instagram_url: t.instagram_url, facebook_url: t.facebook_url, tiktok_url: t.tiktok_url,
-    about_text: t.about_text, products_text: t.products_text
+    about_text: t.about_text, products_text: t.products_text,
+    booking_confirmation: t.booking_confirmation || 'automatic'
   });
 });
 
@@ -152,25 +153,39 @@ router.post('/:slug/appointments', async (req, res) => {
   const barber = await db.prepare('SELECT * FROM barbers WHERE id = ? AND tenant_id = ?').get(barber_id, t.id);
   if (!barber) return res.status(404).json({ error: 'Barbier introuvable' });
 
-  const appt = await db.prepare('INSERT INTO appointments (client_id, barber_id, service_id, date, time, notes, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?)').run(client.id, barber_id, service_id, date, time, notes || null, t.id);
+  // Déterminer le statut selon le mode de confirmation
+  const mode = t.booking_confirmation || 'automatic';
+  let apptStatus = 'confirmed';
+  if (mode === 'manual') {
+    apptStatus = 'pending';
+  } else if (mode === 'hybrid') {
+    const apptMs = new Date(`${date}T${time}`).getTime();
+    apptStatus = (apptMs - Date.now()) >= 24 * 60 * 60 * 1000 ? 'confirmed' : 'pending';
+  }
 
-  // Rappel SMS 24h avant
+  const appt = await db.prepare('INSERT INTO appointments (client_id, barber_id, service_id, date, time, status, notes, tenant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(client.id, barber_id, service_id, date, time, apptStatus, notes || null, t.id);
+
+  // Rappel configurable (défaut 24h)
+  const delayH = parseInt(t.reminder_delay_hours) || 24;
   const apptDT = new Date(`${date}T${time}`);
-  apptDT.setHours(apptDT.getHours() - 24);
+  apptDT.setHours(apptDT.getHours() - delayH);
   const reminderTime = apptDT.toISOString().slice(0,16).replace('T',' ');
-  const smsMsg = `[${t.name}] Rappel: votre RDV "${service.name}" est demain ${date} à ${time} avec ${barber.name}. Pour annuler: ${t.phone || ''}`;
+  const delayLabel = delayH >= 24 ? `${delayH/24 === 1 ? 'demain' : `dans ${delayH/24} jours`}` : `dans ${delayH}h`;
+  const smsMsg = `[${t.name}] Rappel: votre RDV "${service.name}" est ${delayLabel} le ${date} à ${time} avec ${barber.name}. Pour annuler: ${t.phone || ''}`;
   await db.prepare('INSERT INTO reminders (client_id, appointment_id, message, channel, scheduled_at, tenant_id) VALUES (?, ?, ?, ?, ?, ?)').run(client.id, appt.lastInsertRowid, smsMsg, 'sms', reminderTime, t.id);
 
-  // SMS confirmation immédiate
-  if (await guardSmsQuota(t.id)) {
-    sendSMS(client_phone, `[${t.name}] Réservation confirmée! ${service.name} le ${date} à ${time} avec ${barber.name}.`, t).then(() => incrementSmsUsage(t.id)).catch(()=>{});
-  }
-  if (client_email) {
-    const html = confirmationEmailHTML({ clientName: client_name, service: service.name, barber: barber.name, date, time, price: service.price.toFixed(2) }, t.name, t.phone, t.address);
-    sendEmail(client_email, `Confirmation – ${t.name}`, html, t).catch(()=>{});
+  // Notifications immédiates seulement si confirmé
+  if (apptStatus === 'confirmed') {
+    if (await guardSmsQuota(t.id)) {
+      sendSMS(client_phone, `[${t.name}] Réservation confirmée! ${service.name} le ${date} à ${time} avec ${barber.name}.`, t).then(() => incrementSmsUsage(t.id)).catch(()=>{});
+    }
+    if (client_email) {
+      const html = confirmationEmailHTML({ clientName: client_name, service: service.name, barber: barber.name, date, time, price: service.price.toFixed(2) }, t.name, t.phone, t.address);
+      sendEmail(client_email, `Confirmation – ${t.name}`, html, t).catch(()=>{});
+    }
   }
 
-  res.json({ id: appt.lastInsertRowid, message: 'Rendez-vous créé avec succès' });
+  res.json({ id: appt.lastInsertRowid, status: apptStatus, message: apptStatus === 'confirmed' ? 'Rendez-vous confirmé avec succès !' : 'Demande de rendez-vous reçue.' });
 });
 
 module.exports = router;

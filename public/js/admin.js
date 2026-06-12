@@ -670,15 +670,27 @@ async function generateReport() {
 
 // ---- SETTINGS ----
 async function loadSettings() {
-  const [barbersRes, servicesRes, siteSettingsRes] = await Promise.all([
+  const [barbersRes, servicesRes, siteSettingsRes, meRes] = await Promise.all([
     authFetch('/api/barbers'),
     authFetch('/api/services'),
-    authFetch('/api/settings')
+    authFetch('/api/settings'),
+    authFetch('/api/admin/me')
   ]);
   if (!barbersRes?.ok || !servicesRes?.ok || !siteSettingsRes?.ok) return;
   const [barbers, services, siteSettings] = await Promise.all([
     barbersRes.json(), servicesRes.json(), siteSettingsRes.json()
   ]);
+
+  // Booking settings
+  if (meRes?.ok) {
+    const me = await meRes.json();
+    const mode = me.tenant?.booking_confirmation || 'automatic';
+    const delay = me.tenant?.reminder_delay_hours || 24;
+    const radio = document.querySelector(`input[name="confirmationMode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    const delaySelect = document.getElementById('reminderDelaySelect');
+    if (delaySelect) delaySelect.value = String(delay);
+  }
 
   // Hero image preview
   const img = document.getElementById('heroPreviewImg');
@@ -725,6 +737,19 @@ async function loadSettings() {
       </div>
     </div>
   `).join('');
+}
+
+async function saveBookingSettings() {
+  const mode = document.querySelector('input[name="confirmationMode"]:checked')?.value;
+  const delay = document.getElementById('reminderDelaySelect')?.value;
+  if (!mode) return showToast('Sélectionnez un mode de confirmation', 'error');
+  const res = await authFetch('/api/admin/booking-settings', {
+    method: 'PUT',
+    body: JSON.stringify({ booking_confirmation: mode, reminder_delay_hours: parseInt(delay) })
+  });
+  const data = await res?.json();
+  if (res?.ok) showToast('Paramètres sauvegardés', 'success');
+  else showToast(data?.error || 'Erreur', 'error');
 }
 
 async function deleteService(id) {

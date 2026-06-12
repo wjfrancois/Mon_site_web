@@ -450,6 +450,47 @@
         </div>
       </div>
 
+      <!-- Paramètres des rendez-vous -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-header">
+          <h3><i class="fas fa-calendar-check"></i> Paramètres des rendez-vous</h3>
+          <button class="btn btn-sm btn-primary" onclick="saveBookingSettings()"><i class="fas fa-save"></i> Sauvegarder</button>
+        </div>
+        <div style="padding:1.25rem;display:grid;gap:1.75rem">
+
+          <div>
+            <label style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.75rem">Mode de confirmation</label>
+            <div style="display:flex;flex-direction:column;gap:0.6rem">
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="confirmationMode" value="automatic" id="confModeAuto" style="margin-top:3px">
+                <span><strong>Automatique</strong> <span style="color:var(--text-light);font-size:0.85rem">— chaque réservation est confirmée instantanément (défaut)</span></span>
+              </label>
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="confirmationMode" value="manual" id="confModeManual" style="margin-top:3px">
+                <span><strong>Manuel</strong> <span style="color:var(--text-light);font-size:0.85rem">— vous confirmez chaque RDV manuellement depuis l'agenda</span></span>
+              </label>
+              <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer">
+                <input type="radio" name="confirmationMode" value="hybrid" id="confModeHybrid" style="margin-top:3px">
+                <span><strong>Hybride</strong> <span style="color:var(--text-light);font-size:0.85rem">— automatique si réservé &gt;24h à l'avance, sinon en attente</span></span>
+              </label>
+            </div>
+          </div>
+
+          <div>
+            <label for="reminderDelaySelect" style="font-weight:600;font-size:0.9rem;display:block;margin-bottom:0.5rem">Délai du rappel automatique</label>
+            <select id="reminderDelaySelect" class="form-input" style="max-width:280px">
+              <option value="72">72 heures avant</option>
+              <option value="48">48 heures avant</option>
+              <option value="36">36 heures avant</option>
+              <option value="24" selected>24 heures avant (défaut)</option>
+              <option value="3">3 heures avant</option>
+            </select>
+            <p style="color:var(--text-light);font-size:0.8rem;margin-top:0.4rem">Le client reçoit un SMS/email de rappel avant son rendez-vous.</p>
+          </div>
+
+        </div>
+      </div>
+
       <!-- Barbiers & Services -->
       <div class="settings-grid">
         <div class="card">

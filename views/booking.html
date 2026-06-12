@@ -34,21 +34,7 @@
 <nav class="booking-nav" id="bookingNav">
   <div class="booking-nav-inner">
     <a href="#accueil" class="bnav-link active" data-section="accueil">Accueil</a>
-
-    <div class="bnav-dropdown">
-      <a href="#marque" class="bnav-link" data-section="marque">Marque <i class="fas fa-chevron-down bnav-caret"></i></a>
-      <div class="bnav-dropdown-menu" id="brandDropdown">
-        <div class="bnav-dropdown-empty">Aucune marque</div>
-      </div>
-    </div>
-
-    <div class="bnav-dropdown">
-      <a href="#produits" class="bnav-link" data-section="produits">Type de produits <i class="fas fa-chevron-down bnav-caret"></i></a>
-      <div class="bnav-dropdown-menu" id="typeDropdown">
-        <div class="bnav-dropdown-empty">Aucun type</div>
-      </div>
-    </div>
-
+    <a href="#boutique" class="bnav-link" data-section="boutique">Boutique</a>
     <a href="#services" class="bnav-link" data-section="services">Nos services</a>
     <a href="#reservation" class="bnav-link bnav-cta" data-section="reservation">Rendez-vous</a>
   </div>
@@ -79,22 +65,14 @@
   </div>
 </section>
 
-<!-- MARQUE (produits groupés par marque) -->
-<section id="marque" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
+<!-- BOUTIQUE -->
+<section id="boutique" style="display:none;padding:4rem 1.5rem;background:var(--surface)">
   <div style="max-width:1100px;margin:0 auto">
-    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Nos marques</h2>
-    <p style="color:var(--text-light);margin-bottom:2rem;font-size:0.95rem">Découvrez les produits que nous proposons, par marque</p>
-    <div id="productsByBrand"></div>
-  </div>
-</section>
-
-<!-- TYPE DE PRODUITS (produits groupés par type avec filtres) -->
-<section id="produits" style="display:none;padding:4rem 1.5rem;background:var(--white)">
-  <div style="max-width:1100px;margin:0 auto">
-    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Type de produits</h2>
-    <p style="color:var(--text-light);margin-bottom:1.5rem;font-size:0.95rem">Les produits que nous utilisons</p>
-    <div id="productTypeFilters" class="product-type-filters"></div>
-    <div id="productsByType"></div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:clamp(1.5rem,3vw,2rem);margin-bottom:0.5rem;color:var(--primary)">Notre boutique</h2>
+    <p style="color:var(--text-light);margin-bottom:1.5rem;font-size:0.95rem">Découvrez les produits que nous proposons</p>
+    <div id="boutiqueTypeFilters" class="product-type-filters" style="margin-bottom:0.75rem"></div>
+    <div id="boutiqueBrandFilters" class="product-type-filters" style="margin-bottom:2rem"></div>
+    <div id="boutiqueProducts"></div>
   </div>
 </section>
 
@@ -188,8 +166,8 @@
 <!-- SUCCESS SCREEN -->
 <div id="successScreen" class="success-screen hidden">
   <div class="success-content">
-    <div class="success-icon"><i class="fas fa-check"></i></div>
-    <h2>Rendez-vous confirmé !</h2>
+    <div class="success-icon" id="successIcon"><i class="fas fa-check"></i></div>
+    <h2 id="successTitle">Rendez-vous confirmé !</h2>
     <p id="confirmationMsg">Votre rendez-vous a été enregistré avec succès.</p>
     <div class="booking-summary" id="confirmSummary" style="margin:1.5rem 0"></div>
     <button class="btn btn-primary" onclick="resetBooking()"><i class="fas fa-calendar-plus"></i> Prendre un autre rendez-vous</button>

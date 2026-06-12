@@ -13,6 +13,16 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const VIEWS = path.join(__dirname, 'views');
 
+// Migrations PostgreSQL au démarrage
+(async () => {
+  try {
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS booking_confirmation TEXT DEFAULT 'automatic'").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_delay_hours INTEGER DEFAULT 24").run();
+  } catch(e) {
+    console.warn('[Migration] Schema:', e.message);
+  }
+})();
+
 app.use(cors());
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fenix_barbier_fallback_secret',
@@ -55,6 +65,23 @@ app.use('/api/admin/team', requireAuth, require('./routes/team'));
 app.use('/api/admin/billing', requireAuth, require('./routes/stripe'));
 app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
+
+// PUT /api/admin/booking-settings
+app.put('/api/admin/booking-settings', requireAuth, async (req, res) => {
+  const { booking_confirmation, reminder_delay_hours } = req.body;
+  const validModes = ['automatic', 'manual', 'hybrid'];
+  const validDelays = [3, 24, 36, 48, 72];
+  if (booking_confirmation && !validModes.includes(booking_confirmation)) {
+    return res.status(400).json({ error: 'Mode de confirmation invalide' });
+  }
+  const delay = parseInt(reminder_delay_hours);
+  if (reminder_delay_hours !== undefined && !validDelays.includes(delay)) {
+    return res.status(400).json({ error: 'Délai de rappel invalide' });
+  }
+  await db.prepare('UPDATE tenants SET booking_confirmation = ?, reminder_delay_hours = ? WHERE id = ?')
+    .run(booking_confirmation || 'automatic', delay || 24, req.tenantId);
+  res.json({ message: 'Paramètres sauvegardés' });
+});
 
 // GET /api/admin/me — infos utilisateur + tenant + plan
 app.get('/api/admin/me', requireAuth, async (req, res) => {
