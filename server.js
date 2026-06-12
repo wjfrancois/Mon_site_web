@@ -22,6 +22,9 @@ const VIEWS = path.join(__dirname, 'views');
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_overlay_opacity INTEGER DEFAULT 70").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_bg_color TEXT DEFAULT '#1a1a2e'").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_mode TEXT DEFAULT 'manual'").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS twilio_sid TEXT").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS twilio_token TEXT").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS twilio_phone TEXT").run();
     await db.prepare(`
       CREATE TABLE IF NOT EXISTS hero_slides (
         id SERIAL PRIMARY KEY,
@@ -91,6 +94,44 @@ app.put('/api/admin/hero-overlay', requireAuth, async (req, res) => {
   res.json({ message: 'Apparence mise à jour' });
 });
 
+// PUT /api/admin/twilio-settings
+app.put('/api/admin/twilio-settings', requireAuth, async (req, res) => {
+  const { twilio_sid, twilio_token, twilio_phone } = req.body;
+  if (!twilio_sid || !twilio_token || !twilio_phone) {
+    return res.status(400).json({ error: 'Les trois champs Twilio sont obligatoires' });
+  }
+  if (!twilio_sid.startsWith('AC')) {
+    return res.status(400).json({ error: 'Le Account SID doit commencer par "AC"' });
+  }
+  await db.prepare('UPDATE tenants SET twilio_sid = ?, twilio_token = ?, twilio_phone = ? WHERE id = ?')
+    .run(twilio_sid.trim(), twilio_token.trim(), twilio_phone.trim(), req.tenantId);
+  res.json({ message: 'Identifiants Twilio sauvegardés' });
+});
+
+// DELETE /api/admin/twilio-settings
+app.delete('/api/admin/twilio-settings', requireAuth, async (req, res) => {
+  await db.prepare('UPDATE tenants SET twilio_sid = NULL, twilio_token = NULL, twilio_phone = NULL WHERE id = ?')
+    .run(req.tenantId);
+  res.json({ message: 'Identifiants Twilio supprimés — les SMS seront simulés' });
+});
+
+// POST /api/admin/twilio-test
+app.post('/api/admin/twilio-test', requireAuth, async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Numéro de téléphone manquant' });
+  const t = req.tenant;
+  if (!t.twilio_sid || !t.twilio_token || !t.twilio_phone) {
+    return res.status(400).json({ error: 'Configurez d\'abord vos identifiants Twilio' });
+  }
+  const { sendSMS: _sendSMS } = require('./utils/notifications');
+  try {
+    const result = await _sendSMS(to, `[${t.name}] Test SMS depuis Créno – tout fonctionne !`, t);
+    res.json({ message: 'SMS de test envoyé avec succès', sid: result.sid });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // PUT /api/admin/booking-settings
 app.put('/api/admin/booking-settings', requireAuth, async (req, res) => {
   const { booking_confirmation, reminder_delays } = req.body;
@@ -116,9 +157,12 @@ app.get('/api/admin/me', requireAuth, async (req, res) => {
   const user = await db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.userId);
   res.json({
     user: user || { id: req.user.userId, name: '', email: '', role: req.user.role },
-    tenant: { ...req.tenant, days_left_trial: daysLeft },
+    tenant: { ...req.tenant, days_left_trial: daysLeft, twilio_token: undefined },
     plan_limits: plan,
-    booking_url: `${process.env.APP_URL || 'http://localhost:3000'}/book/${req.tenant.slug}`
+    booking_url: `${process.env.APP_URL || 'http://localhost:3000'}/book/${req.tenant.slug}`,
+    twilio_configured: !!(req.tenant.twilio_sid && req.tenant.twilio_token && req.tenant.twilio_phone),
+    twilio_sid: req.tenant.twilio_sid || '',
+    twilio_phone: req.tenant.twilio_phone || ''
   });
 });
 
@@ -137,7 +181,8 @@ cron.schedule('*/5 * * * *', async () => {
     SELECT r.*, c.phone, c.email, c.name as client_name,
            a.date as appt_date, a.time as appt_time,
            s.name as service_name, b.name as barber_name,
-           t.name as tenant_name, t.phone as tenant_phone, t.id as tid, t.plan
+           t.name as tenant_name, t.phone as tenant_phone, t.id as tid, t.plan,
+           t.twilio_sid, t.twilio_token, t.twilio_phone as twilio_from
     FROM reminders r
     JOIN clients c ON r.client_id = c.id
     JOIN tenants t ON r.tenant_id = t.id
@@ -150,8 +195,9 @@ cron.schedule('*/5 * * * *', async () => {
 
   for (const r of due) {
     try {
+      const tenantCfg = { name: r.tenant_name, phone: r.tenant_phone, twilio_sid: r.twilio_sid, twilio_token: r.twilio_token, twilio_phone: r.twilio_from };
       if ((r.channel === 'sms' || !r.channel) && await guardSmsQuota(r.tid)) {
-        await sendSMS(r.phone, r.message);
+        await sendSMS(r.phone, r.message, tenantCfg);
         await incrementSmsUsage(r.tid);
       } else if (r.channel === 'email' && r.email) {
         const html = reminderEmailHTML({
@@ -162,7 +208,7 @@ cron.schedule('*/5 * * * *', async () => {
           time: r.appt_time || '',
           price: ''
         });
-        await sendEmail(r.email, `Rappel – ${r.tenant_name || 'Barbershop'}`, html);
+        await sendEmail(r.email, `Rappel – ${r.tenant_name || 'Barbershop'}`, html, tenantCfg);
       }
       await db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('sent', now, r.id);
       if (r.appointment_id) await db.prepare('UPDATE appointments SET reminder_sent = 1 WHERE id = ?').run(r.appointment_id);
