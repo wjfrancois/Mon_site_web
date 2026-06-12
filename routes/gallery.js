@@ -2,29 +2,15 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const db = require('../database');
-
-function getUploadDir(tenantSlug) {
-  const dir = path.join(__dirname, '..', 'public', 'img', 'tenants', tenantSlug, 'gallery');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, getUploadDir(req.tenant.slug)),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `gallery-${Date.now()}${ext}`);
-  }
-});
+const { uploadFile, deleteFile } = require('../utils/storage');
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp'];
-    cb(null, allowed.includes(path.extname(file.originalname).toLowerCase()));
+    const ok = ['.jpg','.jpeg','.png','.webp'].includes(path.extname(file.originalname).toLowerCase());
+    cb(ok ? null : new Error('Format non supporté (.jpg, .png, .webp requis)'), ok);
   }
 }).single('image');
 
@@ -37,18 +23,17 @@ router.get('/', async (req, res) => {
 // POST /api/admin/gallery
 router.post('/', (req, res, next) => {
   upload(req, res, (err) => {
-    console.log('[Gallery POST] tenant:', req.tenantId, 'err:', err?.message, 'file:', req.file?.originalname);
     (async () => {
       if (err) return res.status(400).json({ error: err.message });
       if (!req.file) return res.status(400).json({ error: 'Format non supporté (.jpg, .png, .webp requis)' });
-      const url = `/img/tenants/${req.tenant.slug}/gallery/${req.file.filename}`;
-      const caption = (req.body && req.body.caption) ? req.body.caption : '';
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const filename = `gallery-${Date.now()}${ext}`;
+      const storagePath = `tenants/${req.tenant.slug}/gallery/${filename}`;
+      const url = await uploadFile(storagePath, req.file.buffer, req.file.mimetype, filename);
+      const caption = req.body?.caption || '';
       const result = await db.prepare('INSERT INTO gallery (tenant_id, url, caption) VALUES (?, ?, ?)').run(req.tenantId, url, caption);
       res.json({ id: result.lastInsertRowid, url, caption });
-    })().catch(e => {
-      console.error('[Gallery POST] error:', e.message);
-      next(e);
-    });
+    })().catch(next);
   });
 });
 
@@ -63,8 +48,7 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   const photo = await db.prepare('SELECT * FROM gallery WHERE id = ? AND tenant_id = ?').get(req.params.id, req.tenantId);
   if (!photo) return res.status(404).json({ error: 'Photo introuvable' });
-  const filePath = path.join(__dirname, '..', 'public', photo.url);
-  if (fs.existsSync(filePath)) try { fs.unlinkSync(filePath); } catch (e) {}
+  await deleteFile(photo.url);
   await db.prepare('DELETE FROM gallery WHERE id = ? AND tenant_id = ?').run(req.params.id, req.tenantId);
   res.json({ message: 'Photo supprimée' });
 });
