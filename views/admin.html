@@ -474,19 +474,23 @@
           </div>
 
           <!-- Gestionnaire de diaporama -->
-          <div id="heroSlideshowSection" style="display:none;border:1px solid var(--border);border-radius:10px;padding:1rem">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
-              <label style="font-weight:600;font-size:0.9rem;margin:0">Images du diaporama</label>
-              <label class="btn btn-sm btn-outline" for="heroSlideInput" style="cursor:pointer">
-                <i class="fas fa-plus"></i> Ajouter une image
+          <div id="heroSlideshowSection" style="display:none;border:1px solid var(--accent,#e2b04a);border-radius:10px;padding:1rem;background:rgba(226,176,74,0.04)">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem">
+              <label style="font-weight:600;font-size:0.9rem;margin:0">
+                <i class="fas fa-images" style="margin-right:0.4rem;color:var(--accent)"></i>
+                Images du diaporama <span id="heroSlideCount" style="font-weight:400;color:var(--text-light);font-size:0.8rem"></span>
               </label>
-              <input type="file" id="heroSlideInput" accept=".jpg,.jpeg,.png,.webp" style="display:none" onchange="uploadHeroSlide(this)">
+              <label class="btn btn-sm btn-primary" for="heroSlideInput" style="cursor:pointer">
+                <i class="fas fa-plus"></i> Ajouter des images
+              </label>
+              <input type="file" id="heroSlideInput" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="uploadHeroSlides(this)">
             </div>
             <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:0.75rem">
-              <i class="fas fa-info-circle"></i> Les images défilent automatiquement sur la page client. Formats : JPG, PNG, WebP — max 5 Mo.
+              Ajoutez plusieurs photos — elles défileront en fondu toutes les 5 secondes sur la page client.<br>
+              Formats : JPG, PNG, WebP — max 5 Mo par image. Cliquez <i class="fas fa-times"></i> pour supprimer.
             </p>
             <div id="heroSlidesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:0.75rem">
-              <p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image pour l'instant.</p>
+              <p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image — ajoutez au moins 2 photos pour activer le diaporama.</p>
             </div>
           </div>
 

@@ -770,31 +770,39 @@ async function loadHeroSlides() {
   if (!res?.ok) return;
   const slides = await res.json();
   const grid = document.getElementById('heroSlidesGrid');
+  const countEl = document.getElementById('heroSlideCount');
   if (!grid) return;
+  if (countEl) countEl.textContent = slides.length ? `(${slides.length} image${slides.length > 1 ? 's' : ''})` : '';
   if (!slides.length) {
-    grid.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image pour l\'instant.</p>';
+    grid.innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;grid-column:1/-1">Aucune image — ajoutez au moins 2 photos pour activer le diaporama.</p>';
     return;
   }
   grid.innerHTML = slides.map(s => `
     <div style="position:relative;border-radius:8px;overflow:hidden;aspect-ratio:16/9;background:var(--border)">
       <img src="${s.url}" alt="Slide" style="width:100%;height:100%;object-fit:cover;display:block">
       <button onclick="deleteHeroSlide(${s.id})"
-        style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center">
+        style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.65);color:#fff;border:none;border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center"
+        title="Supprimer cette image">
         <i class="fas fa-times"></i>
       </button>
     </div>
   `).join('');
 }
 
-async function uploadHeroSlide(input) {
+async function uploadHeroSlides(input) {
   if (!input.files.length) return;
-  const fd = new FormData();
-  fd.append('image', input.files[0]);
-  const res = await authFetch('/api/admin/hero-slides', { method: 'POST', body: fd });
-  const data = await res?.json();
+  const files = [...input.files];
   input.value = '';
-  if (res?.ok) { showToast('Image ajoutée au diaporama', 'success'); loadHeroSlides(); }
-  else showToast(data?.error || 'Erreur lors du téléversement', 'error');
+  let ok = 0, err = 0;
+  for (const file of files) {
+    const fd = new FormData();
+    fd.append('image', file);
+    const res = await authFetch('/api/admin/hero-slides', { method: 'POST', body: fd });
+    if (res?.ok) ok++; else err++;
+  }
+  if (ok) showToast(`${ok} image${ok > 1 ? 's' : ''} ajoutée${ok > 1 ? 's' : ''} au diaporama`, 'success');
+  if (err) showToast(`${err} fichier(s) refusé(s)`, 'error');
+  loadHeroSlides();
 }
 
 async function deleteHeroSlide(id) {
