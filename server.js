@@ -37,6 +37,21 @@ const VIEWS = path.join(__dirname, 'views');
   } catch(e) {
     console.warn('[Migration] Schema:', e.message);
   }
+
+  // Charger les credentials Twilio de la plateforme depuis la DB
+  try {
+    const [sid, token, phone] = await Promise.all([
+      db.prepare("SELECT value FROM site_settings WHERE key = 'twilio_sid'").get(),
+      db.prepare("SELECT value FROM site_settings WHERE key = 'twilio_token'").get(),
+      db.prepare("SELECT value FROM site_settings WHERE key = 'twilio_phone'").get(),
+    ]);
+    if (sid?.value)   process.env.TWILIO_ACCOUNT_SID   = sid.value;
+    if (token?.value) process.env.TWILIO_AUTH_TOKEN     = token.value;
+    if (phone?.value) process.env.TWILIO_PHONE_NUMBER   = phone.value;
+    if (sid?.value) console.log('[Twilio] Credentials chargés depuis la DB');
+  } catch(e) {
+    console.warn('[Twilio] Impossible de charger depuis la DB:', e.message);
+  }
 })();
 
 app.use(cors());
@@ -94,44 +109,6 @@ app.put('/api/admin/hero-overlay', requireAuth, async (req, res) => {
   res.json({ message: 'Apparence mise à jour' });
 });
 
-// PUT /api/admin/twilio-settings
-app.put('/api/admin/twilio-settings', requireAuth, async (req, res) => {
-  const { twilio_sid, twilio_token, twilio_phone } = req.body;
-  if (!twilio_sid || !twilio_token || !twilio_phone) {
-    return res.status(400).json({ error: 'Les trois champs Twilio sont obligatoires' });
-  }
-  if (!twilio_sid.startsWith('AC')) {
-    return res.status(400).json({ error: 'Le Account SID doit commencer par "AC"' });
-  }
-  await db.prepare('UPDATE tenants SET twilio_sid = ?, twilio_token = ?, twilio_phone = ? WHERE id = ?')
-    .run(twilio_sid.trim(), twilio_token.trim(), twilio_phone.trim(), req.tenantId);
-  res.json({ message: 'Identifiants Twilio sauvegardés' });
-});
-
-// DELETE /api/admin/twilio-settings
-app.delete('/api/admin/twilio-settings', requireAuth, async (req, res) => {
-  await db.prepare('UPDATE tenants SET twilio_sid = NULL, twilio_token = NULL, twilio_phone = NULL WHERE id = ?')
-    .run(req.tenantId);
-  res.json({ message: 'Identifiants Twilio supprimés — les SMS seront simulés' });
-});
-
-// POST /api/admin/twilio-test
-app.post('/api/admin/twilio-test', requireAuth, async (req, res) => {
-  const { to } = req.body;
-  if (!to) return res.status(400).json({ error: 'Numéro de téléphone manquant' });
-  const t = req.tenant;
-  if (!t.twilio_sid || !t.twilio_token || !t.twilio_phone) {
-    return res.status(400).json({ error: 'Configurez d\'abord vos identifiants Twilio' });
-  }
-  const { sendSMS: _sendSMS } = require('./utils/notifications');
-  try {
-    const result = await _sendSMS(to, `[${t.name}] Test SMS depuis Créno – tout fonctionne !`, t);
-    res.json({ message: 'SMS de test envoyé avec succès', sid: result.sid });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
 // PUT /api/admin/booking-settings
 app.put('/api/admin/booking-settings', requireAuth, async (req, res) => {
   const { booking_confirmation, reminder_delays } = req.body;
@@ -157,12 +134,9 @@ app.get('/api/admin/me', requireAuth, async (req, res) => {
   const user = await db.prepare('SELECT id, name, email, role FROM users WHERE id = ?').get(req.user.userId);
   res.json({
     user: user || { id: req.user.userId, name: '', email: '', role: req.user.role },
-    tenant: { ...req.tenant, days_left_trial: daysLeft, twilio_token: undefined },
+    tenant: { ...req.tenant, days_left_trial: daysLeft },
     plan_limits: plan,
-    booking_url: `${process.env.APP_URL || 'http://localhost:3000'}/book/${req.tenant.slug}`,
-    twilio_configured: !!(req.tenant.twilio_sid && req.tenant.twilio_token && req.tenant.twilio_phone),
-    twilio_sid: req.tenant.twilio_sid || '',
-    twilio_phone: req.tenant.twilio_phone || ''
+    booking_url: `${process.env.APP_URL || 'http://localhost:3000'}/book/${req.tenant.slug}`
   });
 });
 

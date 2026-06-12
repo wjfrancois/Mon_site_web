@@ -123,4 +123,68 @@ router.post('/impersonate/:tenantId', requireSuperAdmin, async (req, res) => {
   res.json({ accessToken: token, tenant: { name: tenant.name, slug: tenant.slug } });
 });
 
+// GET /api/superadmin/platform-settings
+router.get('/platform-settings', requireSuperAdmin, async (req, res) => {
+  const [sidRow, tokenRow, phoneRow] = await Promise.all([
+    db.prepare("SELECT value FROM site_settings WHERE key = 'twilio_sid'").get(),
+    db.prepare("SELECT value FROM site_settings WHERE key = 'twilio_token'").get(),
+    db.prepare("SELECT value FROM site_settings WHERE key = 'twilio_phone'").get(),
+  ]);
+  const sid   = sidRow?.value   || process.env.TWILIO_ACCOUNT_SID   || '';
+  const phone = phoneRow?.value || process.env.TWILIO_PHONE_NUMBER   || '';
+  const hasToken = !!(tokenRow?.value || process.env.TWILIO_AUTH_TOKEN);
+  res.json({
+    twilio_sid: sid,
+    twilio_phone: phone,
+    twilio_configured: !!(sid && hasToken && phone)
+  });
+});
+
+// PUT /api/superadmin/platform-settings
+router.put('/platform-settings', requireSuperAdmin, async (req, res) => {
+  const { twilio_sid, twilio_token, twilio_phone } = req.body;
+  if (!twilio_sid || !twilio_phone) return res.status(400).json({ error: 'SID et numéro sont obligatoires' });
+  if (!twilio_sid.startsWith('AC')) return res.status(400).json({ error: 'Account SID invalide (doit commencer par AC)' });
+  if (!twilio_token) return res.status(400).json({ error: 'Auth Token obligatoire' });
+
+  const now = new Date().toISOString();
+  const upsert = (key, val) => db.prepare(
+    "INSERT INTO site_settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at"
+  ).run(key, val, now);
+
+  await upsert('twilio_sid',   twilio_sid.trim());
+  await upsert('twilio_token', twilio_token.trim());
+  await upsert('twilio_phone', twilio_phone.trim());
+
+  // Mise à jour immédiate du process courant
+  process.env.TWILIO_ACCOUNT_SID   = twilio_sid.trim();
+  process.env.TWILIO_AUTH_TOKEN     = twilio_token.trim();
+  process.env.TWILIO_PHONE_NUMBER   = twilio_phone.trim();
+
+  res.json({ message: 'Configuration Twilio sauvegardée' });
+});
+
+// DELETE /api/superadmin/platform-settings/twilio
+router.delete('/platform-settings/twilio', requireSuperAdmin, async (req, res) => {
+  await db.prepare("DELETE FROM site_settings WHERE key IN ('twilio_sid', 'twilio_token', 'twilio_phone')").run();
+  delete process.env.TWILIO_ACCOUNT_SID;
+  delete process.env.TWILIO_AUTH_TOKEN;
+  delete process.env.TWILIO_PHONE_NUMBER;
+  res.json({ message: 'Identifiants Twilio supprimés — SMS désactivés' });
+});
+
+// POST /api/superadmin/twilio-test
+router.post('/twilio-test', requireSuperAdmin, async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Numéro de téléphone manquant' });
+  const { sendSMS } = require('../utils/notifications');
+  try {
+    const result = await sendSMS(to, 'Test SMS depuis Créno – la configuration Twilio fonctionne !');
+    if (result.simulated) return res.status(400).json({ error: 'Twilio non configuré — SMS simulé uniquement' });
+    res.json({ message: 'SMS de test envoyé', sid: result.sid });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;

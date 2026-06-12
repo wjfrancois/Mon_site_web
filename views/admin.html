@@ -570,47 +570,6 @@
         </div>
       </div>
 
-      <!-- Notifications SMS – Twilio -->
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="card-header">
-          <h3><i class="fas fa-comment-sms"></i> Notifications SMS (Twilio)</h3>
-          <span id="twilioStatusBadge" style="font-size:0.78rem;padding:3px 10px;border-radius:20px;font-weight:600"></span>
-        </div>
-        <div style="padding:1.25rem;display:grid;gap:1rem">
-          <p style="color:var(--text-light);font-size:0.85rem;margin:0">
-            Connectez votre compte Twilio pour envoyer de vrais SMS de confirmation et de rappel à vos clients.
-            Vos identifiants sont chiffrés et jamais partagés.
-          </p>
-
-          <div class="form-group" style="margin:0">
-            <label>Account SID <span style="color:var(--text-light);font-size:0.8rem">(commence par AC…)</span></label>
-            <input type="text" id="twilioSid" class="form-input" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off">
-          </div>
-
-          <div class="form-group" style="margin:0">
-            <label>Auth Token <span style="color:var(--text-light);font-size:0.8rem">(laissez vide pour ne pas modifier)</span></label>
-            <div style="position:relative">
-              <input type="password" id="twilioToken" class="form-input" placeholder="••••••••••••••••••••••••••••••••" autocomplete="new-password" style="padding-right:2.5rem">
-              <button type="button" onclick="toggleTwilioTokenVisibility()"
-                style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-light)">
-                <i class="fas fa-eye" id="twilioTokenEyeIcon"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group" style="margin:0">
-            <label>Numéro Twilio <span style="color:var(--text-light);font-size:0.8rem">(format +1XXXXXXXXXX)</span></label>
-            <input type="text" id="twilioPhone" class="form-input" placeholder="+15140000000">
-          </div>
-
-          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-primary" onclick="saveTwilioSettings()"><i class="fas fa-save"></i> Sauvegarder</button>
-            <button class="btn btn-outline" onclick="showTwilioTestModal()" id="twilioTestBtn" disabled><i class="fas fa-paper-plane"></i> Envoyer un SMS test</button>
-            <button class="btn btn-danger" onclick="deleteTwilioSettings()" id="twilioDeleteBtn" style="display:none"><i class="fas fa-trash"></i> Supprimer les identifiants</button>
-          </div>
-        </div>
-      </div>
-
       <!-- Barbiers & Services -->
       <div class="settings-grid">
         <div class="card">
@@ -1189,27 +1148,6 @@
       <button type="submit" class="btn btn-primary">Ajouter</button>
     </div>
   </form>
-</div>
-
-<!-- Twilio Test Modal -->
-<div class="modal" id="twilioTestModal">
-  <div class="modal-header">
-    <h3><i class="fas fa-paper-plane"></i> SMS de test</h3>
-    <button onclick="closeAllModals()"><i class="fas fa-times"></i></button>
-  </div>
-  <div class="modal-body">
-    <p style="color:var(--text-light);font-size:0.875rem;margin-bottom:1rem">
-      Entrez un numéro de téléphone pour recevoir un SMS de test et vérifier que votre compte Twilio fonctionne.
-    </p>
-    <div class="form-group">
-      <label>Numéro destinataire</label>
-      <input type="tel" id="twilioTestPhone" class="form-input" placeholder="514-555-0000">
-    </div>
-    <div class="modal-footer">
-      <button type="button" class="btn btn-outline" onclick="closeAllModals()">Annuler</button>
-      <button type="button" class="btn btn-primary" onclick="sendTwilioTestSMS()"><i class="fas fa-paper-plane"></i> Envoyer</button>
-    </div>
-  </div>
 </div>
 
 <!-- Toast -->

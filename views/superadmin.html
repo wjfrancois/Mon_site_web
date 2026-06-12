@@ -318,6 +318,81 @@
       </table>
     </div>
 
+    <!-- ─── TWILIO PLATFORM CONFIG ─── -->
+    <div style="margin-top:2.5rem">
+      <div class="section-header" style="margin-bottom:1rem">
+        <div class="section-title">
+          <i class="fas fa-comment-sms" style="color:var(--accent);margin-right:0.5rem"></i>Configuration SMS — Twilio
+        </div>
+        <span id="twilioStatusBadge"
+          style="font-size:0.75rem;padding:4px 12px;border-radius:999px;font-weight:600;background:rgba(148,163,184,0.15);color:var(--muted)">
+          ○ Non configuré
+        </span>
+      </div>
+
+      <div class="table-wrap" style="padding:1.5rem;display:grid;gap:1.25rem">
+        <p style="color:var(--muted);font-size:0.875rem;margin:0">
+          Ces identifiants sont utilisés pour envoyer les SMS de confirmation et de rappel à tous les salons de la plateforme.
+          Le Auth Token n'est jamais retourné par l'API après sauvegarde.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+              Account SID
+            </label>
+            <input type="text" id="tSid" class="form-input" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off"
+              style="padding-left:1rem">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+              Numéro Twilio
+            </label>
+            <input type="text" id="tPhone" class="form-input" placeholder="+15140000000" autocomplete="off"
+              style="padding-left:1rem">
+          </div>
+        </div>
+
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+            Auth Token <span style="font-weight:400;text-transform:none">(laissez vide pour conserver l'actuel)</span>
+          </label>
+          <div style="position:relative">
+            <input type="password" id="tToken" class="form-input" placeholder="••••••••••••••••••••••••••••••••"
+              autocomplete="new-password" style="padding-left:1rem;padding-right:2.5rem">
+            <button type="button" onclick="toggleTToken()"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted)">
+              <i class="fas fa-eye" id="tTokenEye"></i>
+            </button>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:center">
+          <button class="btn-sm btn-primary" onclick="saveTwilio()"><i class="fas fa-save"></i> Sauvegarder</button>
+          <button class="btn-sm btn-outline" onclick="showTwilioTest()" id="tTestBtn" disabled>
+            <i class="fas fa-paper-plane"></i> SMS de test
+          </button>
+          <button class="btn-sm" onclick="deleteTwilio()" id="tDeleteBtn"
+            style="display:none;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#fca5a5">
+            <i class="fas fa-trash"></i> Supprimer
+          </button>
+        </div>
+
+        <!-- Zone test SMS -->
+        <div id="tTestZone" style="display:none;border-top:1px solid var(--border);padding-top:1rem">
+          <label style="display:block;font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem">
+            Numéro destinataire pour le test
+          </label>
+          <div style="display:flex;gap:0.75rem">
+            <input type="tel" id="tTestPhone" class="form-input" placeholder="514-555-0000" style="padding-left:1rem;max-width:240px">
+            <button class="btn-sm btn-primary" onclick="sendTwilioTest()"><i class="fas fa-paper-plane"></i> Envoyer</button>
+            <button class="btn-sm btn-outline" onclick="document.getElementById('tTestZone').style.display='none'">Annuler</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -349,6 +424,7 @@ function showDash() {
   document.getElementById('dashView').classList.remove('hidden');
   loadStats();
   loadTenants();
+  loadTwilio();
 }
 function logout() {
   localStorage.removeItem(SA_TOKEN_KEY);
@@ -490,6 +566,87 @@ async function impersonate(tenantId, name) {
   localStorage.setItem('accessToken', data.accessToken);
   localStorage.removeItem('refreshToken');
   window.open('/admin', '_blank');
+}
+
+// ─── Twilio ───
+function updateTwilioBadge(configured) {
+  const badge = document.getElementById('twilioStatusBadge');
+  const testBtn = document.getElementById('tTestBtn');
+  const delBtn  = document.getElementById('tDeleteBtn');
+  if (badge) {
+    badge.textContent = configured ? '✓ Connecté' : '○ Non configuré';
+    badge.style.background = configured ? 'rgba(16,185,129,0.15)' : 'rgba(148,163,184,0.15)';
+    badge.style.color = configured ? '#34d399' : 'var(--muted)';
+  }
+  if (testBtn) testBtn.disabled = !configured;
+  if (delBtn)  delBtn.style.display = configured ? 'inline-flex' : 'none';
+}
+
+async function loadTwilio() {
+  const res = await saFetch('/api/superadmin/platform-settings');
+  if (!res?.ok) return;
+  const d = await res.json();
+  const sidEl   = document.getElementById('tSid');
+  const phoneEl = document.getElementById('tPhone');
+  if (sidEl)   sidEl.value   = d.twilio_sid   || '';
+  if (phoneEl) phoneEl.value = d.twilio_phone || '';
+  updateTwilioBadge(d.twilio_configured || false);
+}
+
+function toggleTToken() {
+  const el = document.getElementById('tToken');
+  const ic = document.getElementById('tTokenEye');
+  if (!el) return;
+  el.type = el.type === 'password' ? 'text' : 'password';
+  ic.className = el.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+}
+
+async function saveTwilio() {
+  const sid   = document.getElementById('tSid')?.value.trim();
+  const token = document.getElementById('tToken')?.value.trim();
+  const phone = document.getElementById('tPhone')?.value.trim();
+  if (!sid || !phone) return alert('Account SID et numéro Twilio sont obligatoires.');
+  if (!token) return alert('Entrez votre Auth Token pour sauvegarder.');
+  const res = await saFetch('/api/superadmin/platform-settings', {
+    method: 'PUT',
+    body: JSON.stringify({ twilio_sid: sid, twilio_token: token, twilio_phone: phone })
+  });
+  const data = await res?.json();
+  if (res?.ok) {
+    document.getElementById('tToken').value = '';
+    updateTwilioBadge(true);
+    alert('✓ Configuration Twilio sauvegardée.');
+  } else {
+    alert('Erreur : ' + (data?.error || 'Inconnue'));
+  }
+}
+
+async function deleteTwilio() {
+  if (!confirm('Supprimer les identifiants Twilio ?\nLes SMS seront désactivés sur toute la plateforme.')) return;
+  const res = await saFetch('/api/superadmin/platform-settings/twilio', { method: 'DELETE' });
+  if (res?.ok) {
+    document.getElementById('tSid').value   = '';
+    document.getElementById('tPhone').value = '';
+    document.getElementById('tToken').value = '';
+    updateTwilioBadge(false);
+  }
+}
+
+function showTwilioTest() {
+  document.getElementById('tTestZone').style.display = 'block';
+  document.getElementById('tTestPhone').focus();
+}
+
+async function sendTwilioTest() {
+  const to = document.getElementById('tTestPhone')?.value.trim();
+  if (!to) return alert('Entrez un numéro de téléphone.');
+  const res = await saFetch('/api/superadmin/twilio-test', {
+    method: 'POST',
+    body: JSON.stringify({ to })
+  });
+  const data = await res?.json();
+  if (res?.ok) alert(`✓ SMS envoyé ! SID: ${data.sid || '—'}`);
+  else alert('Erreur : ' + (data?.error || 'Inconnue'));
 }
 
 // ─── Init ───

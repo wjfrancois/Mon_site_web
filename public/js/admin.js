@@ -701,12 +701,6 @@ async function loadSettings() {
     if (heroModeRadio) heroModeRadio.checked = true;
     toggleHeroMode(heroMode);
 
-    // Twilio
-    const twilioSidEl = document.getElementById('twilioSid');
-    const twilioPhoneEl = document.getElementById('twilioPhone');
-    if (twilioSidEl) twilioSidEl.value = me.twilio_sid || '';
-    if (twilioPhoneEl) twilioPhoneEl.value = me.twilio_phone || '';
-    updateTwilioUI(me.twilio_configured || false);
 
     const mode = me.tenant?.booking_confirmation || 'automatic';
     const delaysStr = me.tenant?.reminder_delays || String(me.tenant?.reminder_delay_hours || '24');
@@ -835,79 +829,6 @@ async function saveBookingSettings() {
   const data = await res?.json();
   if (res?.ok) showToast('Paramètres sauvegardés', 'success');
   else showToast(data?.error || 'Erreur', 'error');
-}
-
-// ---- TWILIO ----
-function toggleTwilioTokenVisibility() {
-  const input = document.getElementById('twilioToken');
-  const icon  = document.getElementById('twilioTokenEyeIcon');
-  if (!input) return;
-  if (input.type === 'password') { input.type = 'text'; icon.className = 'fas fa-eye-slash'; }
-  else { input.type = 'password'; icon.className = 'fas fa-eye'; }
-}
-
-function updateTwilioUI(configured) {
-  const badge     = document.getElementById('twilioStatusBadge');
-  const testBtn   = document.getElementById('twilioTestBtn');
-  const deleteBtn = document.getElementById('twilioDeleteBtn');
-  if (badge) {
-    badge.textContent = configured ? '✓ Connecté' : '○ Non configuré';
-    badge.style.background  = configured ? 'rgba(34,197,94,0.12)' : 'rgba(148,163,184,0.15)';
-    badge.style.color = configured ? '#16a34a' : 'var(--text-light)';
-  }
-  if (testBtn)   testBtn.disabled = !configured;
-  if (deleteBtn) deleteBtn.style.display = configured ? 'inline-flex' : 'none';
-}
-
-async function saveTwilioSettings() {
-  const sid   = document.getElementById('twilioSid')?.value.trim();
-  const token = document.getElementById('twilioToken')?.value.trim();
-  const phone = document.getElementById('twilioPhone')?.value.trim();
-  if (!sid || !phone) return showToast('Account SID et numéro Twilio sont obligatoires', 'error');
-  if (!token) return showToast('Entrez votre Auth Token pour sauvegarder', 'error');
-  const res = await authFetch('/api/admin/twilio-settings', {
-    method: 'PUT',
-    body: JSON.stringify({ twilio_sid: sid, twilio_token: token, twilio_phone: phone })
-  });
-  const data = await res?.json();
-  if (res?.ok) {
-    showToast('Identifiants Twilio sauvegardés', 'success');
-    document.getElementById('twilioToken').value = '';
-    updateTwilioUI(true);
-  } else {
-    showToast(data?.error || 'Erreur', 'error');
-  }
-}
-
-async function deleteTwilioSettings() {
-  if (!confirm('Supprimer les identifiants Twilio ?\nLes SMS seront désactivés (mode simulation).')) return;
-  const res = await authFetch('/api/admin/twilio-settings', { method: 'DELETE' });
-  if (res?.ok) {
-    showToast('Identifiants supprimés', 'success');
-    document.getElementById('twilioSid').value = '';
-    document.getElementById('twilioToken').value = '';
-    document.getElementById('twilioPhone').value = '';
-    updateTwilioUI(false);
-  }
-}
-
-function showTwilioTestModal() {
-  document.getElementById('twilioTestPhone').value = '';
-  document.getElementById('twilioTestModal').classList.add('active');
-  document.getElementById('modalOverlay').classList.add('active');
-}
-
-async function sendTwilioTestSMS() {
-  const to = document.getElementById('twilioTestPhone')?.value.trim();
-  if (!to) return showToast('Entrez un numéro de téléphone', 'error');
-  const res = await authFetch('/api/admin/twilio-test', {
-    method: 'POST',
-    body: JSON.stringify({ to })
-  });
-  const data = await res?.json();
-  closeAllModals();
-  if (res?.ok) showToast(`SMS envoyé avec succès (SID: ${data.sid || '—'})`, 'success');
-  else showToast(data?.error || 'Échec de l\'envoi', 'error');
 }
 
 async function deleteService(id) {
