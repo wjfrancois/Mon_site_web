@@ -20,7 +20,9 @@ router.get('/:slug/info', async (req, res) => {
     hero_title: t.hero_title, hero_subtitle: t.hero_subtitle, hero_tag: t.hero_tag,
     instagram_url: t.instagram_url, facebook_url: t.facebook_url, tiktok_url: t.tiktok_url,
     about_text: t.about_text, products_text: t.products_text,
-    booking_confirmation: t.booking_confirmation || 'automatic'
+    booking_confirmation: t.booking_confirmation || 'automatic',
+    hero_overlay_opacity: t.hero_overlay_opacity ?? 70,
+    hero_bg_color: t.hero_bg_color || '#1a1a2e'
   });
 });
 

@@ -681,9 +681,22 @@ async function loadSettings() {
     barbersRes.json(), servicesRes.json(), siteSettingsRes.json()
   ]);
 
-  // Booking settings
+  // Hero overlay settings + booking settings
   if (meRes?.ok) {
     const me = await meRes.json();
+
+    // Apparence bannière
+    const opacity = me.tenant?.hero_overlay_opacity ?? 70;
+    const bgColor = me.tenant?.hero_bg_color || '#1a1a2e';
+    const slider = document.getElementById('overlayOpacitySlider');
+    const label  = document.getElementById('overlayOpacityLabel');
+    const picker = document.getElementById('heroBgColorPicker');
+    const colorLabel = document.getElementById('heroBgColorLabel');
+    if (slider) { slider.value = opacity; }
+    if (label)  { label.textContent = opacity + '%'; }
+    if (picker) { picker.value = bgColor; }
+    if (colorLabel) { colorLabel.textContent = bgColor; }
+
     const mode = me.tenant?.booking_confirmation || 'automatic';
     const delaysStr = me.tenant?.reminder_delays || String(me.tenant?.reminder_delay_hours || '24');
     const activeDelays = delaysStr.split(',').map(Number);
@@ -739,6 +752,18 @@ async function loadSettings() {
       </div>
     </div>
   `).join('');
+}
+
+async function saveHeroOverlay() {
+  const opacity = document.getElementById('overlayOpacitySlider')?.value;
+  const color   = document.getElementById('heroBgColorPicker')?.value;
+  const res  = await authFetch('/api/admin/hero-overlay', {
+    method: 'PUT',
+    body: JSON.stringify({ hero_overlay_opacity: parseInt(opacity), hero_bg_color: color })
+  });
+  const data = await res?.json();
+  if (res?.ok) showToast('Apparence mise à jour', 'success');
+  else showToast(data?.error || 'Erreur', 'error');
 }
 
 async function saveBookingSettings() {

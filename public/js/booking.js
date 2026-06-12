@@ -226,9 +226,20 @@ async function loadTenantInfo() {
 
     // Hero background
     const bgUrl = info.banner_url || info.hero_photo_url;
-    if (bgUrl) {
-      const heroBg = document.getElementById('heroBg');
-      if (heroBg) heroBg.style.backgroundImage = `url('${bgUrl}')`;
+    const heroBg = document.getElementById('heroBg');
+    if (bgUrl && heroBg) heroBg.style.backgroundImage = `url('${bgUrl}')`;
+
+    // Overlay couleur + opacité
+    const color = info.hero_bg_color || '#1a1a2e';
+    const opacity = (info.hero_overlay_opacity ?? 70) / 100;
+    const r = parseInt(color.slice(1,3),16)||26;
+    const g = parseInt(color.slice(3,5),16)||26;
+    const b = parseInt(color.slice(5,7),16)||46;
+    const overlay = document.querySelector('.booking-hero-overlay');
+    if (overlay) overlay.style.background = `rgba(${r},${g},${b},${opacity})`;
+    if (!bgUrl) {
+      const heroEl = document.querySelector('.booking-hero');
+      if (heroEl) heroEl.style.background = `linear-gradient(135deg, ${color}, ${color}dd)`;
     }
 
     // Hero texts

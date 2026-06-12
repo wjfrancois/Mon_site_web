@@ -19,6 +19,8 @@ const VIEWS = path.join(__dirname, 'views');
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS booking_confirmation TEXT DEFAULT 'automatic'").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_delay_hours INTEGER DEFAULT 24").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS reminder_delays TEXT DEFAULT '24'").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_overlay_opacity INTEGER DEFAULT 70").run();
+    await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hero_bg_color TEXT DEFAULT '#1a1a2e'").run();
   } catch(e) {
     console.warn('[Migration] Schema:', e.message);
   }
@@ -66,6 +68,16 @@ app.use('/api/admin/team', requireAuth, require('./routes/team'));
 app.use('/api/admin/billing', requireAuth, require('./routes/stripe'));
 app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
+
+// PUT /api/admin/hero-overlay
+app.put('/api/admin/hero-overlay', requireAuth, async (req, res) => {
+  const { hero_overlay_opacity, hero_bg_color } = req.body;
+  const opacity = Math.min(90, Math.max(0, parseInt(hero_overlay_opacity) ?? 70));
+  const color = /^#[0-9a-fA-F]{6}$/.test(hero_bg_color) ? hero_bg_color : '#1a1a2e';
+  await db.prepare('UPDATE tenants SET hero_overlay_opacity = ?, hero_bg_color = ? WHERE id = ?')
+    .run(opacity, color, req.tenantId);
+  res.json({ message: 'Apparence mise à jour' });
+});
 
 // PUT /api/admin/booking-settings
 app.put('/api/admin/booking-settings', requireAuth, async (req, res) => {
