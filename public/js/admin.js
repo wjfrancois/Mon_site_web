@@ -1470,21 +1470,26 @@ async function sendSupportEmail() {
   const message = document.getElementById('supportMessage')?.value?.trim();
   if (!subject || !message) { showToast('Veuillez remplir tous les champs', 'error'); return; }
   const btn = document.querySelector('#supportModal .btn-primary');
-  if (btn) btn.disabled = true;
-  const res = await authFetch('/api/admin/support', {
-    method: 'POST',
-    body: JSON.stringify({ subject, message })
-  });
-  const d = await res?.json().catch(() => ({}));
-  if (res?.ok) {
-    showToast('Message envoyé au support !', 'success');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi...'; }
+  try {
+    const res = await authFetch('/api/admin/support', {
+      method: 'POST',
+      body: JSON.stringify({ subject, message })
+    });
+    const d = await res?.json().catch(() => ({}));
+    if (res?.ok) {
+      showToast('Message envoyé au support !', 'success');
+    } else {
+      showToast(d?.error || 'Erreur envoi', 'error');
+    }
+  } catch(e) {
+    showToast('Erreur de connexion', 'error');
+  } finally {
     document.getElementById('supportSubject').value = '';
     document.getElementById('supportMessage').value = '';
     closeSupportModal();
-  } else {
-    showToast(d?.error || 'Erreur envoi', 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Envoyer'; }
   }
-  if (btn) btn.disabled = false;
 }
 
 async function sendBookingLinkSms() {
