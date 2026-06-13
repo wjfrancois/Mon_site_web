@@ -1,3 +1,8 @@
+// Polyfill WebSocket for Node < 22 (needed by @supabase/realtime-js)
+if (!globalThis.WebSocket) {
+  try { globalThis.WebSocket = require('ws'); } catch(e) {}
+}
+
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 const fs = require('fs');
@@ -10,14 +15,8 @@ function getClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) return null;
-  const opts = {};
-  // Node < 22 lacks native WebSocket — provide the ws package
-  const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
-  if (nodeMajor < 22) {
-    try { opts.realtime = { transport: require('ws') }; } catch(e) {}
-  }
   try {
-    _client = createClient(url, key, opts);
+    _client = createClient(url, key);
   } catch(e) {
     console.error('[Storage] Supabase client error:', e.message);
     return null;
