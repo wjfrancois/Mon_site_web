@@ -111,6 +111,18 @@
         <a id="dashboardBookingOpen" href="#" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-external-link-alt"></i> Voir</a>
       </div>
 
+      <!-- Envoi rapide du lien par SMS -->
+      <div style="display:flex;align-items:center;gap:0.625rem;margin-bottom:1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:0.625rem 0.875rem">
+        <i class="fas fa-mobile-alt" style="color:var(--accent);flex-shrink:0;font-size:1rem"></i>
+        <span style="font-size:0.8rem;color:var(--text-light);white-space:nowrap">Envoyer le lien par SMS</span>
+        <input type="tel" id="quickSmsPhone" placeholder="+1 514 000 0000"
+          style="flex:1;min-width:0;border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.6rem;font-size:0.85rem;background:var(--bg);color:var(--text)"
+          onkeydown="if(event.key==='Enter') sendBookingLinkSms()">
+        <button onclick="sendBookingLinkSms()" class="btn btn-sm btn-primary" style="white-space:nowrap">
+          <i class="fas fa-paper-plane"></i> Envoyer
+        </button>
+      </div>
+
       <div class="kpi-grid">
         <div class="kpi-card kpi-blue">
           <div class="kpi-icon"><i class="fas fa-calendar-check"></i></div>
