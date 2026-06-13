@@ -98,6 +98,20 @@ app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
 app.use('/api/admin/hero-slides', requireAuth, require('./routes/heroSlides'));
 
+// POST /api/admin/send-booking-link
+app.post('/api/admin/send-booking-link', requireAuth, async (req, res) => {
+  const { phone } = req.body || {};
+  if (!phone) return res.status(400).json({ error: 'Numéro de téléphone requis' });
+  const bookingUrl = `${process.env.APP_URL || 'http://localhost:3000'}/book/${req.tenant.slug}`;
+  const message = `Bonjour ! Voici le lien pour réserver votre rendez-vous chez ${req.tenant.name} : ${bookingUrl}`;
+  await sendSMS(phone, message, {
+    twilio_sid: req.tenant.twilio_sid,
+    twilio_token: req.tenant.twilio_token,
+    twilio_phone: req.tenant.twilio_phone
+  });
+  res.json({ message: 'SMS envoyé' });
+});
+
 // PUT /api/admin/hero-overlay
 app.put('/api/admin/hero-overlay', requireAuth, async (req, res) => {
   const { hero_overlay_opacity, hero_bg_color, hero_mode } = req.body;

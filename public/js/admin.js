@@ -1455,6 +1455,22 @@ function copyBookingUrl() {
   if (url) navigator.clipboard.writeText(url).then(() => showToast('URL copiée !', 'success'));
 }
 
+async function sendBookingLinkSms() {
+  const input = document.getElementById('quickSmsPhone');
+  const phone = input?.value?.trim();
+  if (!phone) { showToast('Entrez un numéro de téléphone', 'error'); return; }
+  const btn = document.querySelector('[onclick="sendBookingLinkSms()"]');
+  if (btn) btn.disabled = true;
+  const res = await authFetch('/api/admin/send-booking-link', {
+    method: 'POST',
+    body: JSON.stringify({ phone })
+  });
+  const d = await res?.json().catch(() => ({}));
+  if (res?.ok) { showToast('Lien envoyé par SMS !', 'success'); input.value = ''; }
+  else showToast(d?.error || 'Erreur envoi SMS', 'error');
+  if (btn) btn.disabled = false;
+}
+
 function openTeamModal() {
   document.getElementById('teamForm')?.reset();
   openModal('teamModal');
