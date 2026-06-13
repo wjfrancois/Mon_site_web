@@ -196,9 +196,16 @@ cron.schedule('*/5 * * * *', async () => {
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/{*path}', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
+// JSON error handler — must be last middleware
+app.use((err, req, res, next) => {
+  console.error('[ERROR]', err.message);
+  res.status(err.status || 500).json({ error: err.message || 'Erreur serveur' });
+});
+
 app.listen(PORT, () => {
   console.log(`✂  Créno – App démarrée sur http://localhost:${PORT}`);
   console.log(`🔒 Admin: http://localhost:${PORT}/admin`);
+  console.log(`📦 Supabase Storage: ${process.env.SUPABASE_URL ? '✓ configuré' : '✗ non configuré (fallback disque local)'}`);
 });
 
 module.exports = app;

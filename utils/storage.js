@@ -16,7 +16,12 @@ function getClient() {
   if (nodeMajor < 22) {
     try { opts.realtime = { transport: require('ws') }; } catch(e) {}
   }
-  _client = createClient(url, key, opts);
+  try {
+    _client = createClient(url, key, opts);
+  } catch(e) {
+    console.error('[Storage] Supabase client error:', e.message);
+    return null;
+  }
   return _client;
 }
 
