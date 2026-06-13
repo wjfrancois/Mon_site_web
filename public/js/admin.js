@@ -1455,6 +1455,38 @@ function copyBookingUrl() {
   if (url) navigator.clipboard.writeText(url).then(() => showToast('URL copiée !', 'success'));
 }
 
+function openSupportModal() {
+  document.getElementById('supportModal').style.display = 'flex';
+  document.getElementById('modalOverlay').style.display = 'block';
+}
+
+function closeSupportModal() {
+  document.getElementById('supportModal').style.display = 'none';
+  document.getElementById('modalOverlay').style.display = 'none';
+}
+
+async function sendSupportEmail() {
+  const subject = document.getElementById('supportSubject')?.value?.trim();
+  const message = document.getElementById('supportMessage')?.value?.trim();
+  if (!subject || !message) { showToast('Veuillez remplir tous les champs', 'error'); return; }
+  const btn = document.querySelector('#supportModal .btn-primary');
+  if (btn) btn.disabled = true;
+  const res = await authFetch('/api/admin/support', {
+    method: 'POST',
+    body: JSON.stringify({ subject, message })
+  });
+  const d = await res?.json().catch(() => ({}));
+  if (res?.ok) {
+    showToast('Message envoyé au support !', 'success');
+    document.getElementById('supportSubject').value = '';
+    document.getElementById('supportMessage').value = '';
+    closeSupportModal();
+  } else {
+    showToast(d?.error || 'Erreur envoi', 'error');
+  }
+  if (btn) btn.disabled = false;
+}
+
 async function sendBookingLinkSms() {
   const input = document.getElementById('quickSmsPhone');
   const phone = input?.value?.trim();

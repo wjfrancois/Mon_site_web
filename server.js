@@ -98,6 +98,25 @@ app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
 app.use('/api/admin/hero-slides', requireAuth, require('./routes/heroSlides'));
 
+// POST /api/admin/support
+app.post('/api/admin/support', requireAuth, async (req, res) => {
+  const { subject, message } = req.body || {};
+  if (!subject || !message) return res.status(400).json({ error: 'Sujet et message requis' });
+  const supportEmail = process.env.SUPERADMIN_EMAIL;
+  if (!supportEmail) return res.status(500).json({ error: 'Support email non configuré' });
+  const { sendEmail } = require('./utils/notifications');
+  const html = `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+    <h2 style="color:#e2b04a">Demande de support — Créno</h2>
+    <p><strong>Salon :</strong> ${req.tenant.name} (${req.tenant.slug})</p>
+    <p><strong>Email du salon :</strong> ${req.tenant.email || 'non renseigné'}</p>
+    <p><strong>Sujet :</strong> ${subject}</p>
+    <hr style="border:1px solid #eee">
+    <p style="white-space:pre-wrap">${message}</p>
+  </div>`;
+  await sendEmail(supportEmail, `[Support Créno] ${subject} — ${req.tenant.name}`, html);
+  res.json({ message: 'Message envoyé' });
+});
+
 // POST /api/admin/send-booking-link
 app.post('/api/admin/send-booking-link', requireAuth, async (req, res) => {
   const { phone } = req.body || {};
