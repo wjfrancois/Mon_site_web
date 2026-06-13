@@ -113,8 +113,16 @@ app.post('/api/admin/support', requireAuth, async (req, res) => {
     <hr style="border:1px solid #eee">
     <p style="white-space:pre-wrap">${message}</p>
   </div>`;
-  await sendEmail(supportEmail, `[Support Créno] ${subject} — ${req.tenant.name}`, html);
-  res.json({ message: 'Message envoyé' });
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
+  try {
+    await Promise.race([
+      sendEmail(supportEmail, `[Support Créno] ${subject} — ${req.tenant.name}`, html),
+      timeout
+    ]);
+  } catch(e) {
+    console.warn('[Support] Email non envoyé:', e.message);
+  }
+  res.json({ message: 'Message reçu' });
 });
 
 // POST /api/admin/send-booking-link
