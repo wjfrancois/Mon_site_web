@@ -1333,7 +1333,10 @@ async function uploadCustomImage(type, input) {
   formData.append('image', input.files[0]);
   const res = await authFetch(`/api/admin/customization/${type}`, { method: 'POST', body: formData });
   if (res?.ok) { showToast('Image mise à jour', 'success'); loadCustomization(); }
-  else showToast('Erreur upload', 'error');
+  else {
+    const d = await res?.json().catch(() => ({}));
+    showToast(d?.error || 'Erreur upload', 'error');
+  }
   input.value = '';
 }
 
