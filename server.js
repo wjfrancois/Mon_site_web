@@ -188,6 +188,7 @@ cron.schedule('*/5 * * * *', async () => {
       if (r.appointment_id) await db.prepare('UPDATE appointments SET reminder_sent = 1 WHERE id = ?').run(r.appointment_id);
     } catch (err) {
       console.error(`[Rappel #${r.id}] Erreur:`, err.message);
+      await db.prepare('UPDATE reminders SET status = ?, sent_at = ? WHERE id = ?').run('failed', now, r.id);
     }
   }
 });

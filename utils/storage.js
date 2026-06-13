@@ -10,7 +10,13 @@ function getClient() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
   if (!url || !key) return null;
-  _client = createClient(url, key);
+  const opts = {};
+  // Node < 22 lacks native WebSocket — provide the ws package
+  const nodeMajor = parseInt(process.versions.node.split('.')[0], 10);
+  if (nodeMajor < 22) {
+    try { opts.realtime = { transport: require('ws') }; } catch(e) {}
+  }
+  _client = createClient(url, key, opts);
   return _client;
 }
 
