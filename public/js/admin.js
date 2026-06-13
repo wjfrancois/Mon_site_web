@@ -1456,13 +1456,13 @@ function copyBookingUrl() {
 }
 
 function openSupportModal() {
-  document.getElementById('supportModal').style.display = 'flex';
-  document.getElementById('modalOverlay').style.display = 'block';
+  document.getElementById('supportModal').classList.add('open');
+  document.getElementById('modalOverlay').classList.add('open');
 }
 
 function closeSupportModal() {
-  document.getElementById('supportModal').style.display = 'none';
-  document.getElementById('modalOverlay').style.display = 'none';
+  document.getElementById('supportModal').classList.remove('open');
+  document.getElementById('modalOverlay').classList.remove('open');
 }
 
 async function sendSupportEmail() {
