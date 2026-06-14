@@ -1,5 +1,51 @@
 require('dotenv').config();
-const nodemailer = require('nodemailer');
+
+// ---- EMAIL via Resend (API HTTPS) ou SMTP fallback ----
+async function sendEmail(to, subject, htmlBody, tenantConfig) {
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    const { Resend } = require('resend');
+    const resend = new Resend(resendKey);
+    const fromDomain = process.env.RESEND_FROM || 'onboarding@resend.dev';
+    const shopName = tenantConfig?.name || process.env.SHOP_NAME || 'Créno';
+    const { data, error } = await resend.emails.send({
+      from: `${shopName} <${fromDomain}>`,
+      to,
+      subject,
+      html: htmlBody,
+    });
+    if (error) throw new Error(error.message);
+    console.log(`[Email envoyé via Resend] → ${to} (ID: ${data?.id})`);
+    return { id: data?.id };
+  }
+
+  // Fallback SMTP (nodemailer)
+  const nodemailer = require('nodemailer');
+  const user = tenantConfig?.smtp_user || process.env.EMAIL_USER;
+  const pass = tenantConfig?.smtp_pass || process.env.EMAIL_PASS;
+  if (!user || !pass) {
+    console.log(`[Email simulé] → ${to}: ${subject}`);
+    return { simulated: true };
+  }
+  const port = parseInt(process.env.EMAIL_PORT || '587');
+  const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port,
+    secure: port === 465,
+    requireTLS: port !== 465,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+  });
+  const shopName = tenantConfig?.name || process.env.SHOP_NAME || 'Barbier';
+  const info = await transporter.sendMail({
+    from: `${shopName} <${user}>`,
+    to,
+    subject,
+    html: htmlBody,
+  });
+  console.log(`[Email envoyé via SMTP] → ${to} (ID: ${info.messageId})`);
+  return { messageId: info.messageId };
+}
 
 // ---- TWILIO SMS ----
 function createTwilioClient(tenantConfig) {
@@ -22,38 +68,6 @@ async function sendSMS(to, message, tenantConfig) {
   const result = await client.messages.create({ body: message, from, to: e164 });
   console.log(`[SMS envoyé] → ${to} (SID: ${result.sid})`);
   return { sid: result.sid };
-}
-
-// ---- NODEMAILER EMAIL ----
-function createMailTransporter(tenantConfig) {
-  // Priorité aux credentials du tenant (smtp_user/smtp_pass), sinon plateforme
-  const user = tenantConfig?.smtp_user || process.env.EMAIL_USER;
-  const pass = tenantConfig?.smtp_pass || process.env.EMAIL_PASS;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: false,
-    auth: { user, pass },
-  });
-}
-
-async function sendEmail(to, subject, htmlBody, tenantConfig) {
-  const transporter = createMailTransporter(tenantConfig);
-  if (!transporter) {
-    console.log(`[Email simulé] → ${to}: ${subject}`);
-    return { simulated: true };
-  }
-  const shopName = tenantConfig?.name || process.env.SHOP_NAME || 'Barbier';
-  const fromEmail = tenantConfig?.smtp_user || process.env.EMAIL_USER || '';
-  const info = await transporter.sendMail({
-    from: `${shopName} <${fromEmail}>`,
-    to,
-    subject,
-    html: htmlBody,
-  });
-  console.log(`[Email envoyé] → ${to} (ID: ${info.messageId})`);
-  return { messageId: info.messageId };
 }
 
 // ---- TEMPLATES ----
