@@ -92,6 +92,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (link) { link.href = me.booking_url; link.textContent = me.booking_url; }
         if (openBtn) openBtn.href = me.booking_url;
       }
+
+      showSetupBanner(me);
     }
   } catch(e) { console.error('Error loading user info:', e); }
 });
@@ -1420,7 +1422,11 @@ async function uploadCustomImage(type, input) {
   const formData = new FormData();
   formData.append('image', input.files[0]);
   const res = await authFetch(`/api/admin/customization/${type}`, { method: 'POST', body: formData });
-  if (res?.ok) { showToast('Image mise à jour', 'success'); loadCustomization(); }
+  if (res?.ok) {
+    showToast('Image mise à jour', 'success');
+    loadCustomization();
+    if (type === 'logo') _updateSetupStepLogo();
+  }
   else {
     const d = await res?.json().catch(() => ({}));
     showToast(d?.error || 'Erreur upload', 'error');
@@ -1708,4 +1714,103 @@ function showPaymentFailedBanner() {
   banner.className = 'banner-warning';
   banner.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Paiement échoué — veuillez mettre à jour votre moyen de paiement. <button class="btn btn-sm btn-danger" onclick="openStripePortal()" style="margin-left:0.5rem">Mettre à jour</button>`;
   document.getElementById('adminMain')?.prepend(banner);
+}
+
+function showSetupBanner(me) {
+  if (document.getElementById('setupBanner')) return;
+  const slug = me.tenant?.slug || '';
+  if (!slug) return;
+  if (localStorage.getItem(`setup_done_${slug}`)) return;
+
+  const hasLogo     = !!me.tenant?.logo_url;
+  const hasServices = !!localStorage.getItem(`setup_services_${slug}`);
+  const hasShared   = !!localStorage.getItem(`setup_shared_${slug}`);
+  const total = [hasLogo, hasServices, hasShared].filter(Boolean).length;
+
+  if (total === 3) { localStorage.setItem(`setup_done_${slug}`, '1'); return; }
+  localStorage.setItem('_setup_slug', slug);
+
+  const makeStep = (done, icon, label, action) => {
+    const attrs = done ? '' : `onclick="${action}" role="button"`;
+    return `<div class="setup-step${done ? ' done' : ''}" ${attrs}>
+      <i class="${done ? 'fas fa-check-circle' : icon}"></i>
+      <span>${label}</span>
+      ${!done ? '<i class="fas fa-chevron-right" style="margin-left:4px;font-size:0.65rem;opacity:0.5"></i>' : ''}
+    </div>`;
+  };
+
+  const banner = document.createElement('div');
+  banner.id = 'setupBanner';
+  banner.className = 'banner-setup';
+  banner.innerHTML = `
+    <div class="setup-banner-top">
+      <div>
+        <strong>Bienvenue ! Configurez votre salon</strong>
+        <span style="font-size:0.78rem;color:var(--text-light);margin-left:8px">${total}/3 complétées</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        ${me.booking_url ? `<a href="${me.booking_url}" target="_blank" class="btn-see-page"><i class="fas fa-eye"></i> Voir ma page</a>` : ''}
+        <button class="setup-dismiss-btn" onclick="dismissSetupBanner('${slug}')" title="Masquer"><i class="fas fa-times"></i></button>
+      </div>
+    </div>
+    <div class="setup-steps-row">
+      ${makeStep(hasLogo,     'fas fa-image',     'Ajouter votre logo',      `showPage('customization')`)}
+      ${makeStep(hasServices, 'fas fa-cut',        'Vérifier vos services',   `markSetupStep('services','${slug}');showPage('services')`)}
+      ${makeStep(hasShared,   'fas fa-share-alt',  'Partager votre lien',     `copySetupLink('${me.booking_url || ''}','${slug}')`)}
+    </div>`;
+
+  document.getElementById('adminMain')?.prepend(banner);
+}
+
+function _updateSetupStepLogo() {
+  const banner = document.getElementById('setupBanner');
+  if (!banner) return;
+  const steps = banner.querySelectorAll('.setup-step');
+  const first = steps[0];
+  if (first && !first.classList.contains('done')) {
+    first.classList.add('done');
+    first.removeAttribute('onclick');
+    first.removeAttribute('role');
+    first.innerHTML = '<i class="fas fa-check-circle"></i><span>Logo ajouté</span>';
+    const countEl = banner.querySelector('span[style*="text-light"]');
+    const slug = localStorage.getItem('_setup_slug');
+    if (countEl) {
+      const done = banner.querySelectorAll('.setup-step.done').length;
+      countEl.textContent = `${done}/3 complétées`;
+      if (done === 3 && slug) setTimeout(() => dismissSetupBanner(slug), 1800);
+    }
+  }
+}
+
+function dismissSetupBanner(slug) {
+  localStorage.setItem(`setup_done_${slug}`, '1');
+  document.getElementById('setupBanner')?.remove();
+}
+
+function markSetupStep(step, slug) {
+  localStorage.setItem(`setup_${step}_${slug}`, '1');
+}
+
+async function copySetupLink(url, slug) {
+  if (!url) return;
+  try { await navigator.clipboard.writeText(url); } catch { }
+  showToast('Lien copié ! Partagez-le avec vos clients 🎉', 'success');
+  markSetupStep('shared', slug);
+  const banner = document.getElementById('setupBanner');
+  if (banner) {
+    const steps = banner.querySelectorAll('.setup-step');
+    const last = steps[steps.length - 1];
+    if (last && !last.classList.contains('done')) {
+      last.classList.add('done');
+      last.removeAttribute('onclick');
+      last.removeAttribute('role');
+      last.innerHTML = '<i class="fas fa-check-circle"></i><span>Lien partagé</span>';
+      const countEl = banner.querySelector('span[style*="text-light"]');
+      if (countEl) {
+        const done = banner.querySelectorAll('.setup-step.done').length;
+        countEl.textContent = `${done}/3 complétées`;
+        if (done === 3) setTimeout(() => dismissSetupBanner(slug), 1800);
+      }
+    }
+  }
 }
