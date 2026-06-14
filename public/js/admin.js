@@ -1649,18 +1649,34 @@ async function loadBilling() {
   const daysInfo = b.plan_status === 'trialing'
     ? `<span style="color:var(--blue)"><i class="fas fa-clock"></i> ${b.days_left_trial} jours d'essai restants</span>`
     : b.current_period_end ? `<span>Renouvellement le ${b.current_period_end}</span>` : '';
+
+  const plans = [
+    { key: 'starter',  label: 'Starter',  price: 29,  desc: '1 barbier, 100 RDV/mois, 50 SMS' },
+    { key: 'pro',      label: 'Pro',       price: 59,  desc: '3 barbiers, illimité, 200 SMS' },
+    { key: 'business', label: 'Business',  price: 99,  desc: 'Barbiers illimités, 500 SMS' },
+  ];
+  const planCards = plans.map(p => {
+    const isCurrent = b.plan === p.key;
+    return `<div style="border:2px solid ${isCurrent ? 'var(--accent)' : 'var(--border)'};border-radius:10px;padding:1.25rem;flex:1;min-width:160px;background:${isCurrent ? 'rgba(226,176,74,0.06)' : 'var(--surface)'}">
+      <div style="font-weight:700;font-size:1rem;color:${isCurrent ? 'var(--accent)' : 'var(--text)'}">${p.label}</div>
+      <div style="font-size:1.5rem;font-weight:800;margin:6px 0">${p.price}<span style="font-size:0.8rem;font-weight:400;color:var(--text-light)"> $/mois</span></div>
+      <div style="font-size:0.75rem;color:var(--text-light);margin-bottom:12px">${p.desc}</div>
+      ${isCurrent
+        ? `<span style="font-size:0.75rem;color:var(--accent);font-weight:600"><i class="fas fa-check"></i> Plan actuel</span>`
+        : `<button class="btn btn-primary" style="width:100%;font-size:0.8rem;padding:6px" onclick="subscribeToPlan('${p.key}')">Choisir</button>`}
+    </div>`;
+  }).join('');
+
   el.innerHTML = `
-    <div class="billing-plan-card">
-      <div class="billing-current">
+    <div style="margin-bottom:1.5rem">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
         <span class="billing-plan-name">${(b.plan||'').toUpperCase()}</span>
         <span class="plan-badge ${b.plan_status}">${b.plan_status}</span>
         ${daysInfo}
       </div>
-      <div style="margin-top:1rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="openStripePortal()"><i class="fas fa-external-link-alt"></i> Gérer l'abonnement</button>
-        <a href="/pricing" target="_blank" class="btn btn-outline"><i class="fas fa-arrow-up"></i> Changer de plan</a>
-      </div>
-    </div>`;
+    </div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem">${planCards}</div>
+    ${b.stripe_customer_id ? `<button class="btn btn-secondary" onclick="openStripePortal()"><i class="fas fa-external-link-alt"></i> Gérer la facturation (Stripe)</button>` : ''}`;
 }
 
 async function openStripePortal() {
