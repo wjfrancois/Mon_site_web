@@ -259,8 +259,11 @@ async function refreshCalendar() {
   const params = new URLSearchParams({ date });
   if (barberId) params.set('barber_id', barberId);
 
-  const appointments = await authFetch(`${API}/api/appointments?${params}`).then(r => r.json());
-  renderCalendarView(appointments, date, barberId);
+  const [appointments, blockedSlots] = await Promise.all([
+    authFetch(`${API}/api/appointments?${params}`).then(r => r.json()),
+    authFetch(`${API}/api/admin/blocked-slots?${params}`).then(r => r.json()).catch(() => []),
+  ]);
+  renderCalendarView(appointments, date, barberId, blockedSlots);
 }
 
 function calendarPrevDay() {
@@ -285,55 +288,140 @@ function calendarToday() {
   refreshCalendar();
 }
 
-function renderCalendarView(appointments, date, barberId) {
+function renderCalendarView(appointments, date, barberId, blockedSlots = []) {
   const container = document.getElementById('calendarView');
   const barbers = [...new Set(appointments.map(a => ({ id: a.barber_id, name: a.barber_name, color: a.barber_color }))
     .map(JSON.stringify))].map(JSON.parse);
 
-  if (barbers.length === 0) {
+  if (barbers.length === 0 && blockedSlots.length === 0) {
     container.innerHTML = '<div class="empty-state" style="padding:3rem"><i class="fas fa-calendar-day"></i><p>Aucun rendez-vous ce jour-là</p></div>';
     return;
   }
 
-  const hours = Array.from({ length: 20 }, (_, i) => {
-    const h = 8 + Math.floor(i / 2);
+  const hours = Array.from({ length: 24 }, (_, i) => {
+    const h = 7 + Math.floor(i / 2);
     const m = i % 2 === 0 ? '00' : '30';
     return `${String(h).padStart(2,'0')}:${m}`;
   });
 
-  const cols = barbers.length;
+  const cols = barbers.length || 1;
   let html = `<div class="cal-time-grid" style="--barber-cols:${cols}">`;
   html += '<div class="cal-col-header"></div>';
-  barbers.forEach(b => html += `<div class="cal-col-header" style="border-left:3px solid ${b.color}">${b.name}</div>`);
+  if (barbers.length === 0) {
+    html += '<div class="cal-col-header">Barbiers</div>';
+  } else {
+    barbers.forEach(b => html += `<div class="cal-col-header" style="border-left:3px solid ${b.color}">${b.name}</div>`);
+  }
 
   hours.forEach(h => {
     html += `<div class="cal-time-label">${h}</div>`;
-    barbers.forEach(b => {
+    const [hh, hm] = h.split(':').map(Number);
+    const slotMin = hh * 60 + hm;
+
+    const renderCol = (b) => {
       const appts = appointments.filter(a => {
-        if (a.barber_id !== b.id) return false;
+        if (b && a.barber_id !== b.id) return false;
         const [ah, am] = a.time.split(':').map(Number);
         const apptMin = ah * 60 + am;
-        const [hh, hm] = h.split(':').map(Number);
-        const slotMin = hh * 60 + hm;
         return apptMin >= slotMin && apptMin < slotMin + 30;
       });
+      const blocks = blockedSlots.filter(bs => {
+        if (b && bs.barber_id !== null && bs.barber_id !== b.id) return false;
+        const [bsh, bsm] = bs.start_time.split(':').map(Number);
+        const bStartMin = bsh * 60 + bsm;
+        return bStartMin >= slotMin && bStartMin < slotMin + 30;
+      });
       let cellHtml = '';
+      blocks.forEach(bs => {
+        const [bsh, bsm] = bs.start_time.split(':').map(Number);
+        const [beh, bem] = bs.end_time.split(':').map(Number);
+        const durationMin = (beh * 60 + bem) - (bsh * 60 + bsm);
+        const heightPercent = Math.max(durationMin / 30 * 100 - 4, 22);
+        cellHtml += `<div class="cal-event cal-blocked" style="height:${heightPercent}px;top:2px" title="${bs.reason || 'Bloqué'} (${bs.start_time}–${bs.end_time})" onclick="deleteBlockedSlot(${bs.id})">
+          <i class="fas fa-ban" style="font-size:10px"></i> ${bs.reason || 'Bloqué'} <span style="font-size:9px;opacity:0.7">${bs.start_time}–${bs.end_time}</span>
+        </div>`;
+      });
       appts.forEach(a => {
         const heightPercent = Math.min(a.duration / 30 * 100, 200);
         const bgColor = a.status === 'confirmed' ? '#10b981'
                       : a.status === 'cancelled'  ? '#ef4444'
                       : a.status === 'completed'  ? '#6366f1'
-                      : b.color;
+                      : (b ? b.color : '#64748b');
         const statusLabel = { confirmed: '✓ ', cancelled: '✗ ', completed: '★ ' }[a.status] || '';
         cellHtml += `<div class="cal-event" style="background:${bgColor};top:2px;height:${Math.max(heightPercent - 4, 22)}px" title="${a.client_name} – ${a.service_name} (${a.status})" onclick="changeApptStatus(${a.id})">
           ${statusLabel}${a.time} ${a.client_name}
         </div>`;
       });
       html += `<div class="cal-cell">${cellHtml}</div>`;
-    });
+    };
+
+    if (barbers.length === 0) {
+      renderCol(null);
+    } else {
+      barbers.forEach(b => renderCol(b));
+    }
   });
   html += '</div>';
   container.innerHTML = html;
+}
+
+// ---- BLOCKED SLOTS ----
+function _buildTimeOptions(selectId, defaultVal) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '';
+  for (let h = 7; h <= 21; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      const val = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      sel.innerHTML += `<option value="${val}" ${val === defaultVal ? 'selected' : ''}>${val}</option>`;
+    }
+  }
+}
+
+async function openBlockedSlotModal() {
+  const date = document.getElementById('calendarDate').value || new Date().toISOString().slice(0,10);
+  document.getElementById('blockDate').value = date;
+  document.getElementById('blockReason').value = '';
+  _buildTimeOptions('blockStart', '12:00');
+  _buildTimeOptions('blockEnd', '13:00');
+  await loadBarberSelectOptions('blockBarber');
+  document.getElementById('blockedSlotModal').classList.add('open');
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeBlockedSlotModal() {
+  document.getElementById('blockedSlotModal').classList.remove('open');
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+async function saveBlockedSlot() {
+  const date = document.getElementById('blockDate').value;
+  const barber_id = document.getElementById('blockBarber').value || null;
+  const start_time = document.getElementById('blockStart').value;
+  const end_time = document.getElementById('blockEnd').value;
+  const reason = document.getElementById('blockReason').value.trim();
+
+  if (!date || !start_time || !end_time) return showToast('Remplissez tous les champs obligatoires', 'error');
+  if (start_time >= end_time) return showToast('L\'heure de fin doit être après le début', 'error');
+
+  const r = await authFetch(`${API}/api/admin/blocked-slots`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ barber_id, date, start_time, end_time, reason }),
+  });
+  const d = await r.json();
+  if (!r.ok) return showToast(d.error || 'Erreur', 'error');
+
+  closeBlockedSlotModal();
+  showToast('Plage bloquée avec succès');
+  refreshCalendar();
+}
+
+async function deleteBlockedSlot(id) {
+  if (!confirm('Supprimer ce blocage ?')) return;
+  await authFetch(`${API}/api/admin/blocked-slots/${id}`, { method: 'DELETE' });
+  showToast('Blocage supprimé');
+  refreshCalendar();
 }
 
 // ---- APPOINTMENTS ----

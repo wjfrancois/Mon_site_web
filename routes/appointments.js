@@ -54,6 +54,10 @@ router.get('/available-slots', async (req, res) => {
     WHERE a.date = ? AND a.barber_id = ? AND a.tenant_id = ? AND a.status != 'cancelled'
   `).all(date, barber_id, req.tenantId);
 
+  const blocked = await db.prepare(
+    'SELECT start_time, end_time FROM blocked_slots WHERE tenant_id = ? AND date = ? AND (barber_id = ? OR barber_id IS NULL)'
+  ).all(req.tenantId, date, barber_id);
+
   const slots = [];
   const [startH, startM] = hours.start_time.split(':').map(Number);
   const [endH, endM] = hours.end_time.split(':').map(Number);
@@ -75,8 +79,13 @@ router.get('/available-slots', async (req, res) => {
       const apptEnd = apptStart + appt.duration;
       return slotStart < apptEnd && slotEnd > apptStart;
     });
+    const blockedConflict = blocked.some(b => {
+      const [bsh, bsm] = b.start_time.split(':').map(Number);
+      const [beh, bem] = b.end_time.split(':').map(Number);
+      return slotStart < beh*60+bem && slotEnd > bsh*60+bsm;
+    });
 
-    if (!conflict) slots.push(slotTime);
+    if (!conflict && !blockedConflict) slots.push(slotTime);
   }
 
   res.json({ slots, working_hours: hours });
