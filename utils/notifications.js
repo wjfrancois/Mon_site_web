@@ -30,11 +30,14 @@ function createMailTransporter(tenantConfig) {
   const user = tenantConfig?.smtp_user || process.env.EMAIL_USER;
   const pass = tenantConfig?.smtp_pass || process.env.EMAIL_PASS;
   if (!user || !pass) return null;
+  const port = parseInt(process.env.EMAIL_PORT || '587');
   return nodemailer.createTransport({
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: false,
+    port,
+    secure: port === 465,
+    requireTLS: port !== 465,
     auth: { user, pass },
+    tls: { rejectUnauthorized: false },
   });
 }
 
