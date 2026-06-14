@@ -204,6 +204,9 @@
         <button class="btn btn-primary" onclick="openApptModal()">
           <i class="fas fa-plus"></i> Nouveau RDV
         </button>
+        <button class="btn btn-secondary" onclick="openBlockedSlotModal()" title="Bloquer une plage horaire">
+          <i class="fas fa-ban"></i> Bloquer
+        </button>
       </div>
       <div class="calendar-view" id="calendarView"></div>
     </div>
@@ -1168,6 +1171,45 @@
 </div>
 
 <!-- Support Modal -->
+<div class="modal" id="blockedSlotModal" style="max-width:460px;z-index:600">
+  <div class="modal-header">
+    <h3 class="modal-title"><i class="fas fa-ban" style="color:#ef4444"></i> Bloquer une plage horaire</h3>
+    <button class="modal-close" onclick="closeBlockedSlotModal()"><i class="fas fa-times"></i></button>
+  </div>
+  <div class="modal-body">
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" id="blockDate" class="form-input">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Barbier</label>
+      <select id="blockBarber" class="form-input">
+        <option value="">Tous les barbiers</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="form-group">
+        <label class="form-label">Début</label>
+        <select id="blockStart" class="form-input"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Fin</label>
+        <select id="blockEnd" class="form-input"></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Raison <span style="color:#94a3b8;font-weight:400">(optionnel)</span></label>
+      <input type="text" id="blockReason" class="form-input" placeholder="ex: Pause déjeuner, Réunion...">
+    </div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" onclick="closeBlockedSlotModal()">Annuler</button>
+    <button class="btn btn-primary" onclick="saveBlockedSlot()" style="background:#ef4444;border-color:#ef4444">
+      <i class="fas fa-ban"></i> Bloquer
+    </button>
+  </div>
+</div>
+
 <div class="modal" id="supportModal" style="max-width:480px;z-index:600">
   <div class="modal-header">
     <h3 class="modal-title"><i class="fas fa-life-ring" style="color:var(--accent)"></i> Contacter le support</h3>

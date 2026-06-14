@@ -94,6 +94,10 @@ router.get('/:slug/slots', async (req, res) => {
       WHERE a.date = ? AND a.barber_id = ? AND a.tenant_id = ? AND a.status != 'cancelled'
     `).all(date, barber.id, t.id);
 
+    const blocked = await db.prepare(
+      'SELECT start_time, end_time FROM blocked_slots WHERE tenant_id = ? AND date = ? AND (barber_id = ? OR barber_id IS NULL)'
+    ).all(t.id, date, barber.id);
+
     const [sh, sm] = hours.start_time.split(':').map(Number);
     const [eh, em] = hours.end_time.split(':').map(Number);
     const startMin = sh*60+sm, endMin = eh*60+em;
@@ -105,7 +109,12 @@ router.get('/:slug/slots', async (req, res) => {
         const as_ = ah*60+am, ae = as_ + a.duration;
         return min < ae && slotEnd > as_;
       });
-      if (!conflict) {
+      const blockedConflict = blocked.some(b => {
+        const [bsh, bsm] = b.start_time.split(':').map(Number);
+        const [beh, bem] = b.end_time.split(':').map(Number);
+        return min < beh*60+bem && slotEnd > bsh*60+bsm;
+      });
+      if (!conflict && !blockedConflict) {
         const key = `${String(Math.floor(min/60)).padStart(2,'0')}:${String(min%60).padStart(2,'0')}`;
         if (!slotMap[key]) slotMap[key] = [];
         slotMap[key].push(barber.id);

@@ -26,6 +26,18 @@ const VIEWS = path.join(__dirname, 'views');
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS twilio_token TEXT").run();
     await db.prepare("ALTER TABLE tenants ADD COLUMN IF NOT EXISTS twilio_phone TEXT").run();
     await db.prepare(`
+      CREATE TABLE IF NOT EXISTS blocked_slots (
+        id SERIAL PRIMARY KEY,
+        tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+        barber_id INTEGER REFERENCES barbers(id) ON DELETE CASCADE,
+        date TEXT NOT NULL,
+        start_time TEXT NOT NULL,
+        end_time TEXT NOT NULL,
+        reason TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).run();
+    await db.prepare(`
       CREATE TABLE IF NOT EXISTS hero_slides (
         id SERIAL PRIMARY KEY,
         tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -97,6 +109,7 @@ app.use('/api/admin/billing', requireAuth, require('./routes/stripe'));
 app.use('/api/admin/gallery', requireAuth, require('./routes/gallery'));
 app.use('/api/admin/products', requireAuth, require('./routes/products'));
 app.use('/api/admin/hero-slides', requireAuth, require('./routes/heroSlides'));
+app.use('/api/admin/blocked-slots', requireAuth, require('./routes/blockedSlots'));
 
 // POST /api/admin/support
 app.post('/api/admin/support', requireAuth, async (req, res) => {
